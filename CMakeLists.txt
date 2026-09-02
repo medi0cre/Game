@@ -7,6 +7,8 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 add_executable(Game
     src/main.c
+    src/Utils.c
+    src/Assets.c
 )
 
 target_include_directories(Game PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
