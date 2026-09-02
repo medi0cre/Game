@@ -2,11 +2,11 @@
 #include <Assets.h>
 #include <Utils.h>
 
+#define Width 1280
+#define Height 720
+
 int main(void)
 {
-    const int Width = 1280;
-    const int Height = 720;
-
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
     InitWindow(Width, Height, "Game");
 
