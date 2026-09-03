@@ -173,3 +173,4 @@ typedef enum {
     Rune
 } AnimationIndex;
 
+void LoadAssets(void);
