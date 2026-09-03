@@ -7,6 +7,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 add_executable(Game
     src/main.c
+    src/Game.c
     src/Utils.c
     src/Assets.c
 )
