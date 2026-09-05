@@ -78,11 +78,4 @@ void GameInit(void)
         else if (i < Tile1) { TextureArray[i] = LoadTexture(WillowFiles.paths[i - Willow1]); }
         else { TextureArray[i] = LoadTexture(TileFiles.paths[i - Tile1]); }
     }
-
-    // Initialize Entities
-    for (uint16_t i = 0; i < EntityMax; i++)
-    {
-        Entities[i].Active = false;
-        Entities[i].Components = 0;
-    }
 }
