@@ -4,6 +4,8 @@
 #include <Entity.h>
 #include <raylib.h>
 
+Arena GameArena;
+
 Input GetUserInput(void)
 {
     return (Input) {
@@ -19,6 +21,9 @@ Input GetUserInput(void)
 
 void GameInit(void)
 {
+    // Allocate 32 Megabytes in Arena
+    ArenaInit(&GameArena, ArenaSize);
+
     // Load Assets
     FilePathList FighterFiles = LoadDirectoryFiles("../assets/animations/fighter");
     FilePathList SamuraiFiles = LoadDirectoryFiles("../assets/animations/samurai");

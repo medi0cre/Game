@@ -8,6 +8,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 add_executable(Game
     src/main.c
     src/Game.c
+    src/Arena.c
     src/Component.c
     src/Entity.c
     src/Utils.c
