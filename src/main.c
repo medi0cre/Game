@@ -1,6 +1,7 @@
 #include <raylib.h>
 #include <Assets.h>
 #include <Utils.h>
+#include <Game.h>
 
 #define Width 1280
 #define Height 720
@@ -11,13 +12,13 @@ int main(void)
     SetTraceLogLevel(LOG_WARNING);
     InitWindow(Width, Height, "Game");
 
-    LoadAssets();
+    GameInit();
 
     while (!WindowShouldClose())
     {
         BeginDrawing();
         ClearBackground(BLACK);
-        DrawTexture(TextureArray[Tile60], 200, 200, WHITE);
+        DrawTextureEx(TextureArray[BGFull], (Vector2) { 0.0f, 0.0f }, 0.0f, 80.0f / 36.0f, WHITE);
         EndDrawing();
     }
 

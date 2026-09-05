@@ -1,9 +1,11 @@
 #pragma once
 #include <stdint.h>
+#include <raylib.h>
+#include <Entity.h>
 
-//#define Component1 UINT64_C(0x1)
-//#define Component2 UINT64_C(0x2)
-//#define Component3 UINT64_C(0x4)
+#define CTransform UINT64_C(0x1)
+#define CMovement UINT64_C(0x2)
+#define CGravity UINT64_C(0x4)
 //#define Component4 UINT64_C(0x8)
 //#define Component5 UINT64_C(0x10)
 //#define Component6 UINT64_C(0x20)
@@ -66,3 +68,11 @@
 //#define Component63 UINT64_C(0x4000000000000000)
 //#define Component64 UINT64_C(0x8000000000000000)
 
+typedef struct {
+    Vector2 Position;
+    Vector2 Direction;
+} Movement;
+
+extern Vector2 Transforms[EntityMax];
+extern Movement Movements[EntityMax];
+extern float Gravities[EntityMax];

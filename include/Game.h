@@ -11,4 +11,5 @@ typedef struct {
     bool Right;
 } Input;
 
+void GameInit(void);
 Input GetUserInput(void);
