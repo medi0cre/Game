@@ -1,7 +1,8 @@
+#include <stdio.h>
 #include <Entity.h>
 #include <Utils.h>
 
-Entity Entities[EntityMax];
+Entity* Entities = NULL;
 
 uint16_t CreateEntity(void)
 {

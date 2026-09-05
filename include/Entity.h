@@ -9,7 +9,7 @@ typedef struct {
     bool Active;
 } Entity;
 
-extern Entity Entities[EntityMax];
+extern Entity* Entities;
 
 uint16_t CreateEntity(void);
 void DestroyEntity(uint16_t _Entity_);

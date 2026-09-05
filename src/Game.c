@@ -1,5 +1,6 @@
 #include <Game.h>
 #include <Assets.h>
+#include <Component.h>
 #include <Utils.h>
 #include <Entity.h>
 #include <raylib.h>
@@ -21,8 +22,12 @@ Input GetUserInput(void)
 
 void GameInit(void)
 {
-    // Allocate 32 Megabytes in Arena
-    ArenaInit(&GameArena, ArenaSize);
+    // Allocate Resources
+    Enforce(ArenaInit(&GameArena, ArenaSize), "Failed to initialize arena");
+    Entities = ArenaAlloc(&GameArena, EntityMax * sizeof(Entity), _Alignof(Entity));
+    Transforms = ArenaAlloc(&GameArena, EntityMax * sizeof(Vector2), _Alignof(Vector2));
+    Movements = ArenaAlloc(&GameArena, EntityMax * sizeof(Movement), _Alignof(Movement));
+    Gravities = ArenaAlloc(&GameArena, EntityMax * sizeof(float), _Alignof(float));
 
     // Load Assets
     FilePathList FighterFiles = LoadDirectoryFiles("../assets/animations/fighter");

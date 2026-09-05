@@ -73,6 +73,6 @@ typedef struct {
     Vector2 Direction;
 } Movement;
 
-extern Vector2 Transforms[EntityMax];
-extern Movement Movements[EntityMax];
-extern float Gravities[EntityMax];
+extern Vector2* Transforms;
+extern Movement* Movements;
+extern float* Gravities;
