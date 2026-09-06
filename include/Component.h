@@ -3,11 +3,11 @@
 #include <raylib.h>
 #include <Entity.h>
 
-#define CTransform UINT64_C(0x1)
+#define CSpatial UINT64_C(0x1)
 #define CMovement UINT64_C(0x2)
 #define CGravity UINT64_C(0x4)
-//#define Component4 UINT64_C(0x8)
-//#define Component5 UINT64_C(0x10)
+#define CAnimation UINT64_C(0x8)
+#define CTexture UINT64_C(0x10)
 //#define Component6 UINT64_C(0x20)
 //#define Component7 UINT64_C(0x40)
 //#define Component8 UINT64_C(0x80)
@@ -70,9 +70,17 @@
 
 typedef struct {
     Vector2 Position;
-    Vector2 Direction;
+    float Scale;
+} Spatial;
+
+typedef struct {
+    float Velocity;
+    float Gravity;
+    float Jump;
 } Movement;
 
-extern Vector2* Transforms;
+extern Spatial* Spatials;
 extern Movement* Movements;
 extern float* Gravities;
+extern uint16_t* Textures;
+extern uint16_t* Animations;

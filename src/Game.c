@@ -5,29 +5,162 @@
 #include <Entity.h>
 #include <raylib.h>
 
+#define MaxLineSize 1024
+#define ArenaSize 33554432 // 32 Megabytes
+
 Arena GameArena;
 
-Input GetUserInput(void)
+void LoadLevel(const char* File)
 {
-    return (Input) {
-        .Z = IsKeyDown(KEY_Z),
-        .X = IsKeyDown(KEY_X),
-        .C = IsKeyDown(KEY_C),
-        .Up = IsKeyDown(KEY_UP),
-        .Down = IsKeyDown(KEY_DOWN),
-        .Left = IsKeyDown(KEY_LEFT),
-        .Right = IsKeyDown(KEY_RIGHT)
-    };
+    FILE* Level = fopen(File, "r");
+    Enforce(Level, "Failed to load level for the game");
+
+    ArenaSnapshot(&GameArena);
+    char* Line = ArenaAlloc(&GameArena, MaxLineSize, _Alignof(char));
+    Enforce(Line, "Failed to allocate line buffer");
+
+    while (fgets(Line, MaxLineSize, Level) != NULL)
+    {
+        // Skip whitespaces, ignore comments and read until null terminator
+        while (*Line == ' ' || *Line == '\n' || *Line == '\t' || *Line == '\r') { Line++; }
+        if (*Line == '#' || *Line == '\0') { continue; }
+
+        int Type = 0;
+        if (sscanf(Line, "%d", &Type) != 1)
+        {
+            TraceLog(LOG_WARNING, "Failed to load line properly");
+            continue;
+        }
+
+        switch (Type)
+        {
+            case Decoration:
+            {
+                int TextureID, PositionX, PositionY, ScaleNumerator, ScaleDenominator;
+
+                if (sscanf(Line, "%d, %d, %d, %d, %d, %d",
+                    &Type,
+                    &TextureID,
+                    &PositionX,
+                    &PositionY,
+                    &ScaleNumerator,
+                    &ScaleDenominator) != 6)
+                {
+                    TraceLog(LOG_WARNING, "Failed to load decoration properly");
+                    continue;
+                }
+
+                uint16_t Dec = CreateEntity();
+                Enforce(Dec < EntityMax, "Failed to create entity");
+
+                Entities[Dec].Components = CSpatial | CTexture;
+                Spatials[Dec].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
+                Spatials[Dec].Scale = (float)ScaleNumerator / (float)ScaleDenominator;
+                Textures[Dec] = (uint16_t)TextureID;
+
+                break;
+            }
+            case Tile:
+            {
+                break;
+            }
+            case Player:
+            {
+                int AnimationID, PositionX, PositionY, Scale, Speed, Jump, Gravity;
+
+                if (sscanf(Line, "%d, %d, %d, %d, %d, %d, %d, %d",
+                    &Type,
+                    &AnimationID,
+                    &PositionX,
+                    &PositionY,
+                    &Scale,
+                    &Speed,
+                    &Jump,
+                    &Gravity) == 8)
+                {
+                    uint16_t _Player_ = CreateEntity();
+                    Enforce(_Player_ < EntityMax, "Failed to create player");
+
+                    Entities[_Player_].Components = CSpatial | CMovement | CGravity | CAnimation;
+                    Spatials[_Player_].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
+                    Spatials[_Player_].Scale = (float)Scale;
+                    Movements[_Player_].Velocity = (float)Speed;
+                    Movements[_Player_].Gravity = (float)Gravity;
+                    Movements[_Player_].Jump = (float)Jump;
+                    Animations[_Player_] = (uint16_t)AnimationID;
+                }
+
+                break;
+            }
+            default:
+            {
+                Enforce(false, "Unknown entity type encountered");
+                return;
+            }
+        }
+    }
+
+    ArenaResetToSnapshot(&GameArena);
+    fclose(Level);
 }
+
+void Render(void)
+{
+    ArenaSnapshot(&GameArena);
+    uint16_t* TempTextureArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
+    uint16_t* TempAnimationArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
+
+    uint16_t LastAnimation = 0;
+    uint16_t LastTexture = 0;
+
+    for (uint16_t i = 0; i < EntityMax; i++)
+    {
+        if (Entities[i].Components & CTexture)
+        {
+            TempTextureArray[LastTexture] = i;
+            LastTexture++;
+        }
+
+        if (Entities[i].Components & CAnimation)
+        {
+            TempAnimationArray[LastAnimation] = i;
+            LastAnimation++;
+        }
+    }
+
+    BeginDrawing();
+    ClearBackground(BLACK);
+
+    for (uint16_t i = 0; i < LastTexture; i++)
+    {
+        uint16_t ID = TempTextureArray[i];
+        Enforce(Entities[ID].Active, "Inactive entity cannot be rendered");
+        DrawTextureEx(TextureArray[Textures[ID]], Spatials[ID].Position, 0.0f, Spatials[ID].Scale, WHITE);
+    }
+
+    for (uint16_t i = 0; i < LastAnimation; i++)
+    {
+        uint16_t ID = TempAnimationArray[i];
+        Enforce(Entities[ID].Active, "Inactive entity cannot be rendered");
+        DrawTextureEx(AnimationArray[Animations[ID]], Spatials[ID].Position, 0.0f, Spatials[ID].Scale, WHITE);
+    }
+
+    ArenaResetToSnapshot(&GameArena);
+    EndDrawing();
+}
+
+//void Update(Input _Input_) {}
 
 void GameInit(void)
 {
     // Allocate Resources
     Enforce(ArenaInit(&GameArena, ArenaSize), "Failed to initialize arena");
     Entities = ArenaAlloc(&GameArena, EntityMax * sizeof(Entity), _Alignof(Entity));
-    Transforms = ArenaAlloc(&GameArena, EntityMax * sizeof(Vector2), _Alignof(Vector2));
+    Spatials = ArenaAlloc(&GameArena, EntityMax * sizeof(Spatial), _Alignof(Spatial));
     Movements = ArenaAlloc(&GameArena, EntityMax * sizeof(Movement), _Alignof(Movement));
     Gravities = ArenaAlloc(&GameArena, EntityMax * sizeof(float), _Alignof(float));
+    Textures = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
+    Animations = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
 
     // Load Assets
     FilePathList FighterFiles = LoadDirectoryFiles("../assets/animations/fighter");
@@ -55,7 +188,7 @@ void GameInit(void)
         && StoneFiles.count == 5 && TreeFiles.count == 3 && WillowFiles.count == 3 && TileFiles.count == 60,
         "Incorrect asset file count");
 
-    for (int i = 0; i < AnimationCount; i++)
+    for (uint16_t i = 0; i < AnimationCount; i++)
     {
         if (i < SamuraiAttack1) { AnimationArray[i] = LoadTexture(FighterFiles.paths[i]); }
         else if (i < ShinobiAttack1) { AnimationArray[i] = LoadTexture(SamuraiFiles.paths[i - SamuraiAttack1]); }
@@ -63,7 +196,7 @@ void GameInit(void)
         else { AnimationArray[i] = LoadTexture(MiscFiles.paths[i - Chest]); }
     }
 
-    for (int i = 0; i < TextureCount; i++)
+    for (uint16_t i = 0; i < TextureCount; i++)
     {
         if (i < Box1) { TextureArray[i] = LoadTexture(BackgroundFiles.paths[i]); }
         else if (i < Bush1) { TextureArray[i] = LoadTexture(BoxFiles.paths[i - Box1]); }
@@ -78,4 +211,17 @@ void GameInit(void)
         else if (i < Tile1) { TextureArray[i] = LoadTexture(WillowFiles.paths[i - Willow1]); }
         else { TextureArray[i] = LoadTexture(TileFiles.paths[i - Tile1]); }
     }
+}
+
+Input GetUserInput(void)
+{
+    return (Input) {
+        .Z = IsKeyDown(KEY_Z),
+        .X = IsKeyDown(KEY_X),
+        .C = IsKeyDown(KEY_C),
+        .Up = IsKeyDown(KEY_UP),
+        .Down = IsKeyDown(KEY_DOWN),
+        .Left = IsKeyDown(KEY_LEFT),
+        .Right = IsKeyDown(KEY_RIGHT)
+    };
 }

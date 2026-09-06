@@ -1,0 +1,23 @@
+# Player: EntityType, AnimationIndex, PositionX, PositionY, Scale, Speed, Jump, Gravity
+0, 5, 200, 200, 1, 8, 5, 5
+
+# Background: EntityType, TextureIndex, PositionX, PositionY, ScaleNumerator, ScaleDenominator
+2, 0, 0, 0, 1280, 576
+
+# Decorations: EntityType, TextureIndex, PositionX, PositionY, ScaleNumerator, ScaleDenominator
+2, 66, 0, 640, 80, 32
+2, 66, 80, 640, 80, 32
+2, 66, 160, 640, 80, 32
+2, 66, 240, 640, 80, 32
+2, 66, 320, 640, 80, 32
+2, 66, 400, 640, 80, 32
+2, 66, 480, 640, 80, 32
+2, 66, 560, 640, 80, 32
+2, 66, 640, 640, 80, 32
+2, 66, 720, 640, 80, 32
+2, 66, 800, 640, 80, 32
+2, 66, 880, 640, 80, 32
+2, 66, 960, 640, 80, 32
+2, 66, 1040, 640, 80, 32
+2, 66, 1120, 640, 80, 32
+2, 66, 1200, 640, 80, 32

@@ -13,13 +13,13 @@ int main(void)
     InitWindow(Width, Height, "Game");
 
     GameInit();
+    LoadLevel("../levels/level1.txt");
 
     while (!WindowShouldClose())
     {
-        BeginDrawing();
-        ClearBackground(BLACK);
-        DrawTextureEx(TextureArray[BGFull], (Vector2) { 0.0f, 0.0f }, 0.0f, 80.0f / 36.0f, WHITE);
-        EndDrawing();
+        //Input _Input_ = GetUserInput();
+        //Update(_Input_);
+        Render();
     }
 
     CloseWindow();

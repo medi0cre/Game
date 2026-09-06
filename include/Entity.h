@@ -9,6 +9,12 @@ typedef struct {
     bool Active;
 } Entity;
 
+typedef enum {
+    Player = 0,
+    Tile = 1,
+    Decoration = 2,
+} EntityType;
+
 extern Entity* Entities;
 
 uint16_t CreateEntity(void);

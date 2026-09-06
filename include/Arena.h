@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define ArenaMax 268435456 // 256 Megabytes
-
 typedef struct {
     unsigned char* Start;
     unsigned char* Current;

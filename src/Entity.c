@@ -6,6 +6,8 @@ Entity* Entities = NULL;
 
 uint16_t CreateEntity(void)
 {
+    Enforce(Entities, "Entities has not been initialized yet");
+
     for (uint16_t i = 0; i < EntityMax; i++)
     {
         if (!Entities[i].Active)
@@ -21,7 +23,7 @@ uint16_t CreateEntity(void)
 
 void DestroyEntity(uint16_t _Entity_)
 {
-    Enforce(_Entity_ < EntityMax, "Entity index exceeded max limit");
+    Enforce(Entities && _Entity_ < EntityMax && Entities[_Entity_].Active, "DestroyEntity() error");
     Entities[_Entity_].Active = false;
     Entities[_Entity_].Components = 0;
 }

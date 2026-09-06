@@ -2,8 +2,6 @@
 #include <stdbool.h>
 #include <Arena.h>
 
-#define ArenaSize 33554432 // 32 Megabytes
-
 typedef struct {
     bool Z;
     bool X;
@@ -18,3 +16,6 @@ extern Arena GameArena;
 
 void GameInit(void);
 Input GetUserInput(void);
+void LoadLevel(const char* File);
+void Render(void);
+//void Update(Input _Input_);

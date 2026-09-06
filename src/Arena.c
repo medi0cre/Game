@@ -1,5 +1,7 @@
 #include <Arena.h>
 
+#define ArenaMax 268435456 // 256 Megabytes
+
 bool ArenaInit(Arena* _Arena_, size_t Size)
 {
     if (!_Arena_)
