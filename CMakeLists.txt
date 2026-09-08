@@ -10,6 +10,7 @@ add_executable(Game
     src/Game.c
     src/Arena.c
     src/Component.c
+    src/System.c
     src/Entity.c
     src/Utils.c
     src/Assets.c

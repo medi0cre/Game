@@ -17,9 +17,7 @@ int main(void)
 
     while (!WindowShouldClose())
     {
-        //Input _Input_ = GetUserInput();
-        //Update(_Input_);
-        Render();
+        GameLoop();
     }
 
     CloseWindow();

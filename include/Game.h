@@ -13,9 +13,9 @@ typedef struct {
 } Input;
 
 extern Arena GameArena;
+extern uint16_t PlayerID;
 
 void GameInit(void);
+void GameLoop(void);
 Input GetUserInput(void);
 void LoadLevel(const char* File);
-void Render(void);
-//void Update(Input _Input_);

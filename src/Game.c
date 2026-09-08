@@ -3,12 +3,94 @@
 #include <Component.h>
 #include <Utils.h>
 #include <Entity.h>
+#include <System.h>
 #include <raylib.h>
 
 #define MaxLineSize 1024
 #define ArenaSize 33554432 // 32 Megabytes
 
 Arena GameArena;
+uint16_t PlayerID = UINT16_MAX;
+
+void GameLoop(void)
+{
+    // Get User Input
+    Input UserInput = GetUserInput();
+
+    // Update
+    ArenaSnapshot(&GameArena);
+
+    uint16_t LastAnimation = 0;
+    uint16_t LastTexture = 0;
+    uint16_t LastGravity = 0;
+    uint16_t LastMovement = 0;
+    uint16_t LastSpatial = 0;
+
+    uint16_t* TempSpatialArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
+    uint16_t* TempMovementArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
+    uint16_t* TempGravityArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
+    uint16_t* TempTextureArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
+    uint16_t* TempAnimationArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
+
+    Enforce(TempSpatialArray && TempMovementArray && TempGravityArray
+        && TempTextureArray && TempAnimationArray, "Failed to allocate temporary memory for rendering");
+
+    for (uint16_t i = 0; i < EntityMax; i++)
+    {
+        if (Entities[i].Active && (Entities[i].Components & CSpatial))
+        {
+            TempSpatialArray[LastSpatial] = i;
+            LastSpatial++;
+        }
+
+        if (Entities[i].Active && (Entities[i].Components & CMovement))
+        {
+            TempMovementArray[LastMovement] = i;
+            LastMovement++;
+        }
+
+        if (Entities[i].Active && (Entities[i].Components & CGravity))
+        {
+            TempGravityArray[LastGravity] = i;
+            LastGravity++;
+        }
+
+        if (Entities[i].Active && (Entities[i].Components & CAnimation))
+        {
+            TempAnimationArray[LastAnimation] = i;
+            LastAnimation++;
+        }
+
+        if (Entities[i].Active && (Entities[i].Components & CTexture))
+        {
+            TempTextureArray[LastTexture] = i;
+            LastTexture++;
+        }
+    }
+
+    S_Movement(UserInput);
+
+    // Render
+    BeginDrawing();
+    ClearBackground(BLACK);
+
+    for (uint16_t i = 0; i < LastTexture; i++)
+    {
+        uint16_t ID = TempTextureArray[i];
+        Enforce(Entities[ID].Active, "Inactive entity cannot be rendered");
+        DrawTextureEx(TextureArray[Textures[ID]], Spatials[ID].Position, 0.0f, Spatials[ID].Scale, WHITE);
+    }
+
+    for (uint16_t i = 0; i < LastAnimation; i++)
+    {
+        uint16_t ID = TempAnimationArray[i];
+        Enforce(Entities[ID].Active, "Inactive entity cannot be rendered");
+        DrawTextureEx(AnimationArray[Animations[ID]], Spatials[ID].Position, 0.0f, Spatials[ID].Scale, WHITE);
+    }
+
+    ArenaResetToSnapshot(&GameArena);
+    EndDrawing();
+}
 
 void LoadLevel(const char* File)
 {
@@ -78,16 +160,16 @@ void LoadLevel(const char* File)
                     &Jump,
                     &Gravity) == 8)
                 {
-                    uint16_t _Player_ = CreateEntity();
-                    Enforce(_Player_ < EntityMax, "Failed to create player");
+                    PlayerID = CreateEntity();
+                    Enforce(PlayerID < EntityMax, "Failed to create player");
 
-                    Entities[_Player_].Components = CSpatial | CMovement | CGravity | CAnimation;
-                    Spatials[_Player_].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
-                    Spatials[_Player_].Scale = (float)Scale;
-                    Movements[_Player_].Velocity = (float)Speed;
-                    Movements[_Player_].Gravity = (float)Gravity;
-                    Movements[_Player_].Jump = (float)Jump;
-                    Animations[_Player_] = (uint16_t)AnimationID;
+                    Entities[PlayerID].Components = CSpatial | CMovement | CGravity | CAnimation;
+                    Spatials[PlayerID].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
+                    Spatials[PlayerID].Scale = (float)Scale;
+                    Movements[PlayerID].Velocity = (float)Speed;
+                    Movements[PlayerID].Gravity = (float)Gravity;
+                    Movements[PlayerID].Jump = (float)Jump;
+                    Animations[PlayerID] = (uint16_t)AnimationID;
                 }
 
                 break;
@@ -104,53 +186,6 @@ void LoadLevel(const char* File)
     fclose(Level);
 }
 
-void Render(void)
-{
-    ArenaSnapshot(&GameArena);
-    uint16_t* TempTextureArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
-    uint16_t* TempAnimationArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
-
-    uint16_t LastAnimation = 0;
-    uint16_t LastTexture = 0;
-
-    for (uint16_t i = 0; i < EntityMax; i++)
-    {
-        if (Entities[i].Components & CTexture)
-        {
-            TempTextureArray[LastTexture] = i;
-            LastTexture++;
-        }
-
-        if (Entities[i].Components & CAnimation)
-        {
-            TempAnimationArray[LastAnimation] = i;
-            LastAnimation++;
-        }
-    }
-
-    BeginDrawing();
-    ClearBackground(BLACK);
-
-    for (uint16_t i = 0; i < LastTexture; i++)
-    {
-        uint16_t ID = TempTextureArray[i];
-        Enforce(Entities[ID].Active, "Inactive entity cannot be rendered");
-        DrawTextureEx(TextureArray[Textures[ID]], Spatials[ID].Position, 0.0f, Spatials[ID].Scale, WHITE);
-    }
-
-    for (uint16_t i = 0; i < LastAnimation; i++)
-    {
-        uint16_t ID = TempAnimationArray[i];
-        Enforce(Entities[ID].Active, "Inactive entity cannot be rendered");
-        DrawTextureEx(AnimationArray[Animations[ID]], Spatials[ID].Position, 0.0f, Spatials[ID].Scale, WHITE);
-    }
-
-    ArenaResetToSnapshot(&GameArena);
-    EndDrawing();
-}
-
-//void Update(Input _Input_) {}
-
 void GameInit(void)
 {
     // Allocate Resources
@@ -161,6 +196,7 @@ void GameInit(void)
     Gravities = ArenaAlloc(&GameArena, EntityMax * sizeof(float), _Alignof(float));
     Textures = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
     Animations = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
+    Enforce(Entities && Spatials && Movements && Gravities && Textures && Animations, "Failed to initialize component arrays");
 
     // Load Assets
     FilePathList FighterFiles = LoadDirectoryFiles("../assets/animations/fighter");
