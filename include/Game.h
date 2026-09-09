@@ -14,6 +14,7 @@ typedef struct {
 
 extern Arena GameArena;
 extern uint16_t PlayerID;
+extern uint64_t GameFrame;
 
 void GameInit(void);
 void GameLoop(void);

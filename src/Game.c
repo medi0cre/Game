@@ -11,6 +11,7 @@
 
 Arena GameArena;
 uint16_t PlayerID = UINT16_MAX;
+uint64_t GameFrame = 0;
 
 void GameLoop(void)
 {
@@ -25,15 +26,17 @@ void GameLoop(void)
     uint16_t LastGravity = 0;
     uint16_t LastMovement = 0;
     uint16_t LastSpatial = 0;
+    uint16_t LastCollisionBox = 0;
 
     uint16_t* TempSpatialArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
     uint16_t* TempMovementArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
     uint16_t* TempGravityArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
     uint16_t* TempTextureArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
     uint16_t* TempAnimationArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
+    uint16_t* TempCollisionBoxArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
 
     Enforce(TempSpatialArray && TempMovementArray && TempGravityArray
-        && TempTextureArray && TempAnimationArray, "Failed to allocate temporary memory for rendering");
+        && TempTextureArray && TempAnimationArray && TempCollisionBoxArray, "Failed to allocate temporary memory for rendering");
 
     for (uint16_t i = 0; i < EntityMax; i++)
     {
@@ -41,6 +44,12 @@ void GameLoop(void)
         {
             TempSpatialArray[LastSpatial] = i;
             LastSpatial++;
+        }
+
+        if (Entities[i].Active && (Entities[i].Components & CCollisionBox))
+        {
+            TempCollisionBoxArray[LastCollisionBox] = i;
+            LastCollisionBox++;
         }
 
         if (Entities[i].Active && (Entities[i].Components & CMovement))
@@ -69,6 +78,7 @@ void GameLoop(void)
     }
 
     S_Movement(UserInput);
+    S_Collision(TempCollisionBoxArray, LastCollisionBox);
 
     // Render
     BeginDrawing();
@@ -144,13 +154,38 @@ void LoadLevel(const char* File)
             }
             case Tile:
             {
+                int TextureID, PositionX, PositionY, ScaleNumerator, ScaleDenominator, CollisionBoxX, CollisionBoxY;
+
+                if (sscanf(Line, "%d, %d, %d, %d, %d, %d, %d, %d",
+                    &Type,
+                    &TextureID,
+                    &PositionX,
+                    &PositionY,
+                    &ScaleNumerator,
+                    &ScaleDenominator,
+                    &CollisionBoxX,
+                    &CollisionBoxY) != 8)
+                {
+                    TraceLog(LOG_WARNING, "Failed to load decoration properly");
+                    continue;
+                }
+
+                uint16_t Tile = CreateEntity();
+                Enforce(Tile < EntityMax, "Failed to create entity");
+
+                Entities[Tile].Components = CSpatial | CTexture | CCollisionBox;
+                Spatials[Tile].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
+                Spatials[Tile].Scale = (float)ScaleNumerator / (float)ScaleDenominator;
+                Textures[Tile] = (uint16_t)TextureID;
+                CollisionBoxes[Tile] = (CollisionBox) { .Width = CollisionBoxX, .Height = CollisionBoxY };
+
                 break;
             }
             case Player:
             {
-                int AnimationID, PositionX, PositionY, Scale, Speed, Jump, Gravity;
+                int AnimationID, PositionX, PositionY, Scale, Speed, Jump, Gravity, CollisionBoxX, CollisionBoxY;
 
-                if (sscanf(Line, "%d, %d, %d, %d, %d, %d, %d, %d",
+                if (sscanf(Line, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d",
                     &Type,
                     &AnimationID,
                     &PositionX,
@@ -158,8 +193,11 @@ void LoadLevel(const char* File)
                     &Scale,
                     &Speed,
                     &Jump,
-                    &Gravity) == 8)
+                    &Gravity,
+                    &CollisionBoxX,
+                    &CollisionBoxY) == 10)
                 {
+                    Enforce(PlayerID == UINT16_MAX, "There should never be 2 players, serious bug");
                     PlayerID = CreateEntity();
                     Enforce(PlayerID < EntityMax, "Failed to create player");
 
@@ -170,6 +208,7 @@ void LoadLevel(const char* File)
                     Movements[PlayerID].Gravity = (float)Gravity;
                     Movements[PlayerID].Jump = (float)Jump;
                     Animations[PlayerID] = (uint16_t)AnimationID;
+                    CollisionBoxes[PlayerID] = (CollisionBox) { .Width = CollisionBoxX, .Height = CollisionBoxY };
                 }
 
                 break;
@@ -196,7 +235,10 @@ void GameInit(void)
     Gravities = ArenaAlloc(&GameArena, EntityMax * sizeof(float), _Alignof(float));
     Textures = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
     Animations = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
-    Enforce(Entities && Spatials && Movements && Gravities && Textures && Animations, "Failed to initialize component arrays");
+    CollisionBoxes = ArenaAlloc(&GameArena, EntityMax * sizeof(CollisionBox), _Alignof(CollisionBox));
+
+    Enforce(Entities && Spatials && Movements && Gravities
+        && Textures && Animations && CollisionBoxes, "Failed to initialize component arrays");
 
     // Load Assets
     FilePathList FighterFiles = LoadDirectoryFiles("../assets/animations/fighter");

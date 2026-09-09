@@ -8,7 +8,7 @@
 #define CGravity UINT64_C(0x4)
 #define CAnimation UINT64_C(0x8)
 #define CTexture UINT64_C(0x10)
-//#define Component6 UINT64_C(0x20)
+#define CCollisionBox UINT64_C(0x20)
 //#define Component7 UINT64_C(0x40)
 //#define Component8 UINT64_C(0x80)
 //#define Component9 UINT64_C(0x100)
@@ -79,8 +79,14 @@ typedef struct {
     float Jump;
 } Movement;
 
+typedef struct {
+    uint16_t Width;
+    uint16_t Height;
+} CollisionBox;
+
 extern Spatial* Spatials;
 extern Movement* Movements;
 extern float* Gravities;
 extern uint16_t* Textures;
 extern uint16_t* Animations;
+extern CollisionBox* CollisionBoxes;
