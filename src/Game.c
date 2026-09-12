@@ -79,6 +79,7 @@ void GameLoop(void)
 
     S_Movement(UserInput);
     S_Collision(TempCollisionBoxArray, LastCollisionBox);
+    S_Animation(TempAnimationArray, LastAnimation);
 
     // Render
     BeginDrawing();
@@ -113,7 +114,6 @@ void GameLoop(void)
         };
 
         DrawTexturePro(AnimationArray[Animations[ID].AnimationID], Source, Destination, (Vector2) { 0.0f, 0.0f }, 0.0f, WHITE);
-        Animations[ID].CurrentFrameInAnimation = (Animations[ID].CurrentFrameInAnimation + 1) % Animations[ID].FramesInAnimation;
     }
 
     ArenaResetToSnapshot(&GameArena);
@@ -203,11 +203,10 @@ void LoadLevel(const char* File)
             }
             case Player:
             {
-                int AnimationID, PositionX, PositionY, Scale, Speed, Jump, Gravity, CollisionBoxX, CollisionBoxY;
+                int PositionX, PositionY, Scale, Speed, Jump, Gravity, CollisionBoxX, CollisionBoxY;
 
-                if (sscanf(Line, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d",
+                if (sscanf(Line, "%d, %d, %d, %d, %d, %d, %d, %d, %d",
                     &Type,
-                    &AnimationID,
                     &PositionX,
                     &PositionY,
                     &Scale,
@@ -215,7 +214,7 @@ void LoadLevel(const char* File)
                     &Jump,
                     &Gravity,
                     &CollisionBoxX,
-                    &CollisionBoxY) == 10)
+                    &CollisionBoxY) == 9)
                 {
                     Enforce(PlayerID == UINT16_MAX, "There should never be 2 players, serious bug");
                     PlayerID = CreateEntity();
@@ -229,9 +228,11 @@ void LoadLevel(const char* File)
                     Movements[PlayerID].Jump = (float)Jump;
                     CollisionBoxes[PlayerID] = (CollisionBox) { .Width = CollisionBoxX, .Height = CollisionBoxY };
                     Animations[PlayerID] = (Animation) {
-                        .AnimationID = AnimationID,
+                        .AnimationID = FighterIdle,
                         .CurrentFrameInAnimation = 0,
-                        .FramesInAnimation = FrameCountFighterIdle
+                        .FramesInAnimation = FrameCountFighterIdle,
+                        .FramesPassed = 0,
+                        .Duration = FrameDurationFighterIdle
                     };
                 }
 

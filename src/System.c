@@ -2,6 +2,25 @@
 #include <Utils.h>
 #include <Component.h>
 
+void S_Animation(uint16_t* TempAnimationArray, uint16_t LastAnimation)
+{
+    Enforce(TempAnimationArray && LastAnimation < EntityMax, "Precondition broken inside S_Animation()");
+
+    for (uint16_t i = 0; i < LastAnimation; i++)
+    {
+        uint16_t ID = TempAnimationArray[i];
+        Enforce(ID < EntityMax, "Invalid ID inside S_Animation()");
+
+        if (Animations[ID].FramesPassed > Animations[ID].Duration)
+        {
+            Animations[ID].CurrentFrameInAnimation = (Animations[ID].CurrentFrameInAnimation + 1) % Animations[ID].FramesInAnimation;
+            Animations[ID].FramesPassed = 0;
+        }
+
+        Animations[ID].FramesPassed++;
+    }
+}
+
 void S_Collision(uint16_t* TempCollisionBoxArray, uint16_t LastCollisionBox)
 {
     Enforce(TempCollisionBoxArray && LastCollisionBox < EntityMax, "Precondition broken inside S_Collision()");

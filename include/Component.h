@@ -88,6 +88,8 @@ typedef struct {
     uint16_t AnimationID;
     uint16_t FramesInAnimation;
     uint16_t CurrentFrameInAnimation;
+    uint16_t Duration;
+    uint16_t FramesPassed;
 } Animation;
 
 extern Spatial* Spatials;
