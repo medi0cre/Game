@@ -95,11 +95,31 @@ void GameLoop(void)
     {
         uint16_t ID = TempAnimationArray[i];
         Enforce(Entities[ID].Active, "Inactive entity cannot be rendered");
-        DrawTextureEx(AnimationArray[Animations[ID]], Spatials[ID].Position, 0.0f, Spatials[ID].Scale, WHITE);
+
+        uint16_t FrameWidth = AnimationArray[Animations[ID].AnimationID].width / Animations[ID].FramesInAnimation;
+
+        Rectangle Source = {
+            .x = FrameWidth * Animations[ID].CurrentFrameInAnimation,
+            .y = 0.0f,
+            .width = FrameWidth,
+            .height = AnimationArray[Animations[ID].AnimationID].height
+        };
+
+        Rectangle Destination = {
+            .x = Spatials[ID].Position.x,
+            .y = Spatials[ID].Position.y,
+            .width = Source.width * Spatials[ID].Scale,
+            .height = Source.height * Spatials[ID].Scale
+        };
+
+        DrawTexturePro(AnimationArray[Animations[ID].AnimationID], Source, Destination, (Vector2) { 0.0f, 0.0f }, 0.0f, WHITE);
+        Animations[ID].CurrentFrameInAnimation = (Animations[ID].CurrentFrameInAnimation + 1) % Animations[ID].FramesInAnimation;
     }
 
     ArenaResetToSnapshot(&GameArena);
     EndDrawing();
+
+    GameFrame++;
 }
 
 void LoadLevel(const char* File)
@@ -207,8 +227,12 @@ void LoadLevel(const char* File)
                     Movements[PlayerID].Velocity = (float)Speed;
                     Movements[PlayerID].Gravity = (float)Gravity;
                     Movements[PlayerID].Jump = (float)Jump;
-                    Animations[PlayerID] = (uint16_t)AnimationID;
                     CollisionBoxes[PlayerID] = (CollisionBox) { .Width = CollisionBoxX, .Height = CollisionBoxY };
+                    Animations[PlayerID] = (Animation) {
+                        .AnimationID = AnimationID,
+                        .CurrentFrameInAnimation = 0,
+                        .FramesInAnimation = FrameCountFighterIdle
+                    };
                 }
 
                 break;
@@ -234,7 +258,7 @@ void GameInit(void)
     Movements = ArenaAlloc(&GameArena, EntityMax * sizeof(Movement), _Alignof(Movement));
     Gravities = ArenaAlloc(&GameArena, EntityMax * sizeof(float), _Alignof(float));
     Textures = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
-    Animations = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
+    Animations = ArenaAlloc(&GameArena, EntityMax * sizeof(Animation), _Alignof(Animation));
     CollisionBoxes = ArenaAlloc(&GameArena, EntityMax * sizeof(CollisionBox), _Alignof(CollisionBox));
 
     Enforce(Entities && Spatials && Movements && Gravities

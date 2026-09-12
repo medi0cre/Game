@@ -84,9 +84,15 @@ typedef struct {
     uint16_t Height;
 } CollisionBox;
 
+typedef struct {
+    uint16_t AnimationID;
+    uint16_t FramesInAnimation;
+    uint16_t CurrentFrameInAnimation;
+} Animation;
+
 extern Spatial* Spatials;
 extern Movement* Movements;
 extern float* Gravities;
 extern uint16_t* Textures;
-extern uint16_t* Animations;
+extern Animation* Animations;
 extern CollisionBox* CollisionBoxes;
