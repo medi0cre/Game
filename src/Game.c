@@ -9,7 +9,7 @@
 #define MaxLineSize 1024
 #define ArenaSize 33554432 // 32 Megabytes
 
-Arena GameArena;
+Arena GameArena = { 0 };
 uint16_t PlayerID = UINT16_MAX;
 uint64_t GameFrame = 0;
 
@@ -40,43 +40,17 @@ void GameLoop(void)
 
     for (uint16_t i = 0; i < EntityMax; i++)
     {
-        if (Entities[i].Active && (Entities[i].Components & CSpatial))
-        {
-            TempSpatialArray[LastSpatial] = i;
-            LastSpatial++;
-        }
+        if (!Entities[i].Active) { continue; }
 
-        if (Entities[i].Active && (Entities[i].Components & CCollisionBox))
-        {
-            TempCollisionBoxArray[LastCollisionBox] = i;
-            LastCollisionBox++;
-        }
-
-        if (Entities[i].Active && (Entities[i].Components & CMovement))
-        {
-            TempMovementArray[LastMovement] = i;
-            LastMovement++;
-        }
-
-        if (Entities[i].Active && (Entities[i].Components & CGravity))
-        {
-            TempGravityArray[LastGravity] = i;
-            LastGravity++;
-        }
-
-        if (Entities[i].Active && (Entities[i].Components & CAnimation))
-        {
-            TempAnimationArray[LastAnimation] = i;
-            LastAnimation++;
-        }
-
-        if (Entities[i].Active && (Entities[i].Components & CTexture))
-        {
-            TempTextureArray[LastTexture] = i;
-            LastTexture++;
-        }
+        if (Entities[i].ComponentMask & CSpatial) { TempSpatialArray[LastSpatial++] = i; }
+        if (Entities[i].ComponentMask & CCollisionBox) { TempCollisionBoxArray[LastCollisionBox++] = i; }
+        if (Entities[i].ComponentMask & CMovement) { TempMovementArray[LastMovement++] = i; }
+        if (Entities[i].ComponentMask & CGravity) { TempGravityArray[LastGravity++] = i; }
+        if (Entities[i].ComponentMask & CAnimation) { TempAnimationArray[LastAnimation++] = i; }
+        if (Entities[i].ComponentMask & CTexture) { TempTextureArray[LastTexture++] = i; }
     }
 
+    S_Gravity(TempGravityArray, LastGravity);
     S_Movement(UserInput);
     S_Collision(TempCollisionBoxArray, LastCollisionBox);
     S_Animation(TempAnimationArray, LastAnimation);
@@ -165,7 +139,7 @@ void LoadLevel(const char* File)
                 uint16_t Dec = CreateEntity();
                 Enforce(Dec < EntityMax, "Failed to create entity");
 
-                Entities[Dec].Components = CSpatial | CTexture;
+                Entities[Dec].ComponentMask = CSpatial | CTexture;
                 Spatials[Dec].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
                 Spatials[Dec].Scale = (float)ScaleNumerator / (float)ScaleDenominator;
                 Textures[Dec] = (uint16_t)TextureID;
@@ -193,7 +167,7 @@ void LoadLevel(const char* File)
                 uint16_t Tile = CreateEntity();
                 Enforce(Tile < EntityMax, "Failed to create entity");
 
-                Entities[Tile].Components = CSpatial | CTexture | CCollisionBox;
+                Entities[Tile].ComponentMask = CSpatial | CTexture | CCollisionBox;
                 Spatials[Tile].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
                 Spatials[Tile].Scale = (float)ScaleNumerator / (float)ScaleDenominator;
                 Textures[Tile] = (uint16_t)TextureID;
@@ -203,36 +177,43 @@ void LoadLevel(const char* File)
             }
             case Player:
             {
-                int PositionX, PositionY, Scale, Speed, Jump, Gravity, CollisionBoxX, CollisionBoxY;
+                int PositionX, PositionY, Scale, Speed, MaxVelocity, Jump, Acceleration, CollisionBoxX, CollisionBoxY;
 
-                if (sscanf(Line, "%d, %d, %d, %d, %d, %d, %d, %d, %d",
+                if (sscanf(Line, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d",
                     &Type,
                     &PositionX,
                     &PositionY,
                     &Scale,
                     &Speed,
+                    &MaxVelocity,
                     &Jump,
-                    &Gravity,
+                    &Acceleration,
                     &CollisionBoxX,
-                    &CollisionBoxY) == 9)
+                    &CollisionBoxY) == 10)
                 {
                     Enforce(PlayerID == UINT16_MAX, "There should never be 2 players, serious bug");
                     PlayerID = CreateEntity();
                     Enforce(PlayerID < EntityMax, "Failed to create player");
 
-                    Entities[PlayerID].Components = CSpatial | CMovement | CGravity | CAnimation;
+                    Entities[PlayerID].ComponentMask = CSpatial | CMovement | CGravity | CAnimation;
                     Spatials[PlayerID].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
                     Spatials[PlayerID].Scale = (float)Scale;
-                    Movements[PlayerID].Velocity = (float)Speed;
-                    Movements[PlayerID].Gravity = (float)Gravity;
-                    Movements[PlayerID].Jump = (float)Jump;
                     CollisionBoxes[PlayerID] = (CollisionBox) { .Width = CollisionBoxX, .Height = CollisionBoxY };
+                    Movements[PlayerID].x = (float)Speed;
+
+                    Gravities[PlayerID] = (Gravity) {
+                        .Acceleration = (float)Acceleration * 0.50f,
+                        .MaxVelocity = (float)MaxVelocity,
+                        .Jump = (float)Jump,
+                        .Grounded = false
+                    };
+
                     Animations[PlayerID] = (Animation) {
-                        .AnimationID = FighterIdle,
+                        .AnimationID = SamuraiIdle,
                         .CurrentFrameInAnimation = 0,
-                        .FramesInAnimation = FrameCountFighterIdle,
+                        .FramesInAnimation = FrameCountSamuraiIdle,
                         .FramesPassed = 0,
-                        .Duration = FrameDurationFighterIdle
+                        .Duration = FrameDurationSamuraiIdle
                     };
                 }
 
@@ -256,8 +237,8 @@ void GameInit(void)
     Enforce(ArenaInit(&GameArena, ArenaSize), "Failed to initialize arena");
     Entities = ArenaAlloc(&GameArena, EntityMax * sizeof(Entity), _Alignof(Entity));
     Spatials = ArenaAlloc(&GameArena, EntityMax * sizeof(Spatial), _Alignof(Spatial));
-    Movements = ArenaAlloc(&GameArena, EntityMax * sizeof(Movement), _Alignof(Movement));
-    Gravities = ArenaAlloc(&GameArena, EntityMax * sizeof(float), _Alignof(float));
+    Movements = ArenaAlloc(&GameArena, EntityMax * sizeof(Vector2), _Alignof(Vector2));
+    Gravities = ArenaAlloc(&GameArena, EntityMax * sizeof(Gravity), _Alignof(Gravity));
     Textures = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
     Animations = ArenaAlloc(&GameArena, EntityMax * sizeof(Animation), _Alignof(Animation));
     CollisionBoxes = ArenaAlloc(&GameArena, EntityMax * sizeof(CollisionBox), _Alignof(CollisionBox));
@@ -266,23 +247,23 @@ void GameInit(void)
         && Textures && Animations && CollisionBoxes, "Failed to initialize component arrays");
 
     // Load Assets
-    FilePathList FighterFiles = LoadDirectoryFiles("../assets/animations/fighter");
-    FilePathList SamuraiFiles = LoadDirectoryFiles("../assets/animations/samurai");
-    FilePathList ShinobiFiles = LoadDirectoryFiles("../assets/animations/shinobi");
-    FilePathList MiscFiles = LoadDirectoryFiles("../assets/animations/misc");
+    FilePathList FighterFiles = LoadDirectoryFiles(AssetPath "animations/fighter");
+    FilePathList SamuraiFiles = LoadDirectoryFiles(AssetPath "animations/samurai");
+    FilePathList ShinobiFiles = LoadDirectoryFiles(AssetPath "animations/shinobi");
+    FilePathList MiscFiles = LoadDirectoryFiles(AssetPath "animations/misc");
 
-    FilePathList BackgroundFiles = LoadDirectoryFiles("../assets/background");
-    FilePathList BoxFiles = LoadDirectoryFiles("../assets/objects/boxes");
-    FilePathList BushFiles = LoadDirectoryFiles("../assets/objects/bushes");
-    FilePathList FenceFiles = LoadDirectoryFiles("../assets/objects/fence");
-    FilePathList GrassFiles = LoadDirectoryFiles("../assets/objects/grass");
-    FilePathList LadderFiles = LoadDirectoryFiles("../assets/objects/ladders");
-    FilePathList PointerFiles = LoadDirectoryFiles("../assets/objects/pointers");
-    FilePathList RidgeFiles = LoadDirectoryFiles("../assets/objects/ridges");
-    FilePathList StoneFiles = LoadDirectoryFiles("../assets/objects/stones");
-    FilePathList TreeFiles = LoadDirectoryFiles("../assets/objects/trees");
-    FilePathList WillowFiles = LoadDirectoryFiles("../assets/objects/willows");
-    FilePathList TileFiles = LoadDirectoryFiles("../assets/tiles");
+    FilePathList BackgroundFiles = LoadDirectoryFiles(AssetPath "background");
+    FilePathList BoxFiles = LoadDirectoryFiles(AssetPath "objects/boxes");
+    FilePathList BushFiles = LoadDirectoryFiles(AssetPath "objects/bushes");
+    FilePathList FenceFiles = LoadDirectoryFiles(AssetPath "objects/fence");
+    FilePathList GrassFiles = LoadDirectoryFiles(AssetPath "objects/grass");
+    FilePathList LadderFiles = LoadDirectoryFiles(AssetPath "objects/ladders");
+    FilePathList PointerFiles = LoadDirectoryFiles(AssetPath "objects/pointers");
+    FilePathList RidgeFiles = LoadDirectoryFiles(AssetPath "objects/ridges");
+    FilePathList StoneFiles = LoadDirectoryFiles(AssetPath "objects/stones");
+    FilePathList TreeFiles = LoadDirectoryFiles(AssetPath "objects/trees");
+    FilePathList WillowFiles = LoadDirectoryFiles(AssetPath "objects/willows");
+    FilePathList TileFiles = LoadDirectoryFiles(AssetPath "tiles");
 
     Enforce(FighterFiles.count == 10 && SamuraiFiles.count == 10 && ShinobiFiles.count == 10
         && MiscFiles.count == 5 && BackgroundFiles.count == 6 && BoxFiles.count == 6

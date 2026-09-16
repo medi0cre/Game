@@ -2,6 +2,12 @@
 #include <stdbool.h>
 #include <Arena.h>
 
+#define WindowWidth 1280
+#define WindowHeight 720
+
+#define LevelPath "../levels/"
+#define AssetPath "../assets/"
+
 typedef struct {
     bool Z;
     bool X;

@@ -5,7 +5,7 @@
 #define EntityMax 10000
 
 typedef struct {
-    uint64_t Components;
+    uint64_t ComponentMask;
     bool Active;
 } Entity;
 

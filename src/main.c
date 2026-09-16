@@ -3,17 +3,14 @@
 #include <Utils.h>
 #include <Game.h>
 
-#define Width 1280
-#define Height 720
-
 int main(void)
 {
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
     SetTraceLogLevel(LOG_WARNING);
-    InitWindow(Width, Height, "Game");
+    InitWindow(WindowWidth, WindowHeight, "Game");
 
     GameInit();
-    LoadLevel("../levels/level1.txt");
+    LoadLevel(LevelPath "level1.txt");
 
     while (!WindowShouldClose())
     {

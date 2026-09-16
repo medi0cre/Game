@@ -13,7 +13,7 @@ uint16_t CreateEntity(void)
         if (!Entities[i].Active)
         {
             Entities[i].Active = true;
-            Entities[i].Components = 0;
+            Entities[i].ComponentMask = 0;
             return i;
         }
     }
@@ -25,5 +25,5 @@ void DestroyEntity(uint16_t _Entity_)
 {
     Enforce(Entities && _Entity_ < EntityMax && Entities[_Entity_].Active, "DestroyEntity() error");
     Entities[_Entity_].Active = false;
-    Entities[_Entity_].Components = 0;
+    Entities[_Entity_].ComponentMask = 0;
 }

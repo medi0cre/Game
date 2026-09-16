@@ -2,6 +2,23 @@
 #include <Utils.h>
 #include <Component.h>
 
+void S_Gravity(uint16_t* TempGravityArray, uint16_t LastGravity)
+{
+    Enforce(TempGravityArray && LastGravity < EntityMax, "Precondition broken inside S_Gravity()");
+
+    for (uint16_t i = 0; i < LastGravity; i++)
+    {
+        uint16_t ID = TempGravityArray[i];
+        Enforce(ID < EntityMax
+            && Gravities[ID].Acceleration > 0.0f
+            && Movements[ID].y <= Gravities[ID].MaxVelocity && Movements[ID].y >= -Gravities[ID].MaxVelocity
+            , "Invalid values inside S_Gravity()");
+
+        Movements[ID].y += Gravities[ID].Acceleration;
+        if (Movements[ID].y > Gravities[ID].MaxVelocity) { Movements[ID].y = Gravities[ID].MaxVelocity; }
+    }
+}
+
 void S_Animation(uint16_t* TempAnimationArray, uint16_t LastAnimation)
 {
     Enforce(TempAnimationArray && LastAnimation < EntityMax, "Precondition broken inside S_Animation()");
@@ -24,6 +41,7 @@ void S_Animation(uint16_t* TempAnimationArray, uint16_t LastAnimation)
 void S_Collision(uint16_t* TempCollisionBoxArray, uint16_t LastCollisionBox)
 {
     Enforce(TempCollisionBoxArray && LastCollisionBox < EntityMax, "Precondition broken inside S_Collision()");
+    Gravities[PlayerID].Grounded = false;
 
     for (uint16_t i = 0; i < LastCollisionBox; i++)
     {
@@ -48,6 +66,7 @@ void S_Collision(uint16_t* TempCollisionBoxArray, uint16_t LastCollisionBox)
 
         Rectangle Overlap = GetCollisionRec(PlayerBox, TileBox);
         if (Overlap.width == 0.0f && Overlap.height == 0.0f) { continue; }
+        Enforce(Overlap.width > 0.0f && Overlap.height > 0.0f, "Buggy overlap");
 
         // TODO: Find a better way to handle this. Consider using previous position to check if there was a new collision
         // Enforce(Overlap.width != Overlap.height, "Exact same collision resolution between object and player");
@@ -55,22 +74,34 @@ void S_Collision(uint16_t* TempCollisionBoxArray, uint16_t LastCollisionBox)
         if (Overlap.width >= Overlap.height) // Vertical Collision
         {
             Enforce(Spatials[PlayerID].Position.y != Spatials[ID].Position.y, "Exact same y position");
+            Enforce(Movements[PlayerID].y != 0.0f, "Invariant broken inside S_Collision()");
 
             // Player hits tile from below
-            if (Spatials[PlayerID].Position.y > Spatials[ID].Position.y) { Spatials[PlayerID].Position.y += Overlap.height; }
+            if (Movements[PlayerID].y < 0.0f)
+            {
+                Spatials[PlayerID].Position.y += Overlap.height;
+                Movements[PlayerID].y = 0.0f;
+            }
 
             // Player hits tile from above
-            else { Spatials[PlayerID].Position.y -= Overlap.height; }
+            else if (Movements[PlayerID].y > 0.0f)
+            {
+                Spatials[PlayerID].Position.y -= Overlap.height;
+                Movements[PlayerID].y = 0.0f;
+                Gravities[PlayerID].Grounded = true;
+            }
+
         }
         else // Horizontal Collision
         {
             Enforce(Spatials[PlayerID].Position.x != Spatials[ID].Position.x, "Exact same x position");
+            Enforce(Movements[PlayerID].x != 0.0f, "Invariant broken inside S_Collision()");
 
             // Player hits tile from the right
-            if (Spatials[PlayerID].Position.x > Spatials[ID].Position.x) { Spatials[PlayerID].Position.x += Overlap.width; }
+            if (Movements[PlayerID].x < 0.0f) { Spatials[PlayerID].Position.x += Overlap.width; }
 
             // Player hits tile from the left
-            else { Spatials[PlayerID].Position.x -= Overlap.width; }
+            else if (Movements[PlayerID].x > 0.0f) { Spatials[PlayerID].Position.x -= Overlap.width; }
         }
     }
 }
@@ -78,8 +109,16 @@ void S_Collision(uint16_t* TempCollisionBoxArray, uint16_t LastCollisionBox)
 void S_Movement(Input UserInput)
 {
     // Player
-    if (UserInput.Up) { Spatials[PlayerID].Position.y -= Movements[PlayerID].Velocity; }
-    if (UserInput.Down) { Spatials[PlayerID].Position.y += Movements[PlayerID].Velocity; }
-    if (UserInput.Right) { Spatials[PlayerID].Position.x += Movements[PlayerID].Velocity; }
-    if (UserInput.Left) { Spatials[PlayerID].Position.x -= Movements[PlayerID].Velocity; }
+    if (UserInput.Right && !UserInput.Left) { Spatials[PlayerID].Position.x += Movements[PlayerID].x; }
+    if (!UserInput.Right && UserInput.Left) { Spatials[PlayerID].Position.x -= Movements[PlayerID].x; }
+
+    if (UserInput.Up && Gravities[PlayerID].Grounded)
+    {
+        Movements[PlayerID].y -= Gravities[PlayerID].Jump;
+        if (Movements[PlayerID].y < -Gravities[PlayerID].MaxVelocity) { Movements[PlayerID].y = -Gravities[PlayerID].MaxVelocity; }
+    }
+
+    if (!UserInput.Up && !Gravities[PlayerID].Grounded && Movements[PlayerID].y < 0.0f) { Movements[PlayerID].y = 0.0f; }
+
+    Spatials[PlayerID].Position.y += Movements[PlayerID].y;
 }

@@ -74,12 +74,6 @@ typedef struct {
 } Spatial;
 
 typedef struct {
-    float Velocity;
-    float Gravity;
-    float Jump;
-} Movement;
-
-typedef struct {
     uint16_t Width;
     uint16_t Height;
 } CollisionBox;
@@ -92,9 +86,16 @@ typedef struct {
     uint16_t FramesPassed;
 } Animation;
 
+typedef struct {
+    float Acceleration;
+    float MaxVelocity;
+    float Jump;
+    bool Grounded;
+} Gravity;
+
 extern Spatial* Spatials;
-extern Movement* Movements;
-extern float* Gravities;
+extern Vector2* Movements;
+extern Gravity* Gravities;
 extern uint16_t* Textures;
 extern Animation* Animations;
 extern CollisionBox* CollisionBoxes;
