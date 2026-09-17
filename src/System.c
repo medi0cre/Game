@@ -154,6 +154,13 @@ void S_Movement(Input UserInput)
 
     if (!UserInput.Up && !Gravities[PlayerID].Grounded && Movements[PlayerID].Velocity.y < 0.0f) { Movements[PlayerID].Velocity.y = 0.0f; }
 
+    if (!Gravities[PlayerID].Grounded)
+    {
+        Animations[PlayerID].AnimationID = SamuraiJump;
+        Animations[PlayerID].FramesInAnimation = FrameCountSamuraiJump;
+        Animations[PlayerID].Duration = FrameDurationSamuraiJump;
+    }
+
     Spatials[PlayerID].Position.y += Movements[PlayerID].Velocity.y;
     Spatials[PlayerID].Position.x += Movements[PlayerID].Velocity.x;
 }
