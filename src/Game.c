@@ -67,13 +67,14 @@ void GameLoop(void)
     {
         uint16_t ID = TempAnimationArray[i];
         Enforce(Entities[ID].Active, "Inactive entity cannot be rendered");
+        Enforce(ID == PlayerID, "Not a player, need to handle Source.width differently now");
 
         uint16_t FrameWidth = AnimationArray[Animations[ID].AnimationID].width / Animations[ID].FramesInAnimation;
 
         Rectangle Source = {
             .x = FrameWidth * Animations[ID].CurrentFrameInAnimation,
             .y = 0.0f,
-            .width = FrameWidth,
+            .width = Movements[ID].Direction.x * FrameWidth,
             .height = AnimationArray[Animations[ID].AnimationID].height
         };
 
@@ -174,19 +175,18 @@ void LoadLevel(const char* File)
             }
             case Player:
             {
-                int PositionX, PositionY, Scale, Speed, MaxVelocity, Jump, Acceleration, CollisionBoxX, CollisionBoxY;
+                int PositionX, PositionY, Scale, MaxVelocity, Jump, Acceleration, CollisionBoxX, CollisionBoxY;
 
-                if (sscanf(Line, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d",
+                if (sscanf(Line, "%d, %d, %d, %d, %d, %d, %d, %d, %d",
                     &Type,
                     &PositionX,
                     &PositionY,
                     &Scale,
-                    &Speed,
                     &MaxVelocity,
                     &Jump,
                     &Acceleration,
                     &CollisionBoxX,
-                    &CollisionBoxY) != 10)
+                    &CollisionBoxY) != 9)
                 {
                     TraceLog(LOG_WARNING, "Failed to load player properly");
                     continue;
@@ -200,7 +200,11 @@ void LoadLevel(const char* File)
                 Spatials[PlayerID].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
                 Spatials[PlayerID].Scale = (float)Scale;
                 CollisionBoxes[PlayerID] = (CollisionBox) { .Width = CollisionBoxX, .Height = CollisionBoxY };
-                Movements[PlayerID].x = (float)Speed;
+
+                Movements[PlayerID] = (Movement) {
+                    .Velocity = { 0.0f, 0.0f },
+                    .Direction = { 1.0f, 1.0f }
+                };
 
                 Gravities[PlayerID] = (Gravity) {
                     .Acceleration = (float)Acceleration * 0.50f,
@@ -238,7 +242,7 @@ void GameInit(void)
     Enforce(ArenaInit(&GameArena, ArenaSize), "Failed to initialize arena");
     Entities = ArenaAlloc(&GameArena, EntityMax * sizeof(Entity), _Alignof(Entity));
     Spatials = ArenaAlloc(&GameArena, EntityMax * sizeof(Spatial), _Alignof(Spatial));
-    Movements = ArenaAlloc(&GameArena, EntityMax * sizeof(Vector2), _Alignof(Vector2));
+    Movements = ArenaAlloc(&GameArena, EntityMax * sizeof(Movement), _Alignof(Movement));
     Gravities = ArenaAlloc(&GameArena, EntityMax * sizeof(Gravity), _Alignof(Gravity));
     Textures = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
     Animations = ArenaAlloc(&GameArena, EntityMax * sizeof(Animation), _Alignof(Animation));

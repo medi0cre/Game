@@ -10,7 +10,8 @@ typedef enum {
     WindowHeight = 720,
     MaxLineSize = 1024,
     ArenaSize = 33554432, // 32 Megabytes
-    EntityMax = 10000
+    EntityMax = 10000,
+    PlayerSpeed = 8
 } GameConfig;
 
 typedef struct {

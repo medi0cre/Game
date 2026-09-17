@@ -1,4 +1,5 @@
 #include <System.h>
+#include <Assets.h>
 #include <Utils.h>
 #include <Component.h>
 
@@ -11,11 +12,11 @@ void S_Gravity(uint16_t* TempGravityArray, uint16_t LastGravity)
         uint16_t ID = TempGravityArray[i];
         Enforce(ID < EntityMax
             && Gravities[ID].Acceleration > 0.0f
-            && Movements[ID].y <= Gravities[ID].MaxVelocity && Movements[ID].y >= -Gravities[ID].MaxVelocity
+            && Movements[ID].Velocity.y <= Gravities[ID].MaxVelocity && Movements[ID].Velocity.y >= -Gravities[ID].MaxVelocity
             , "Invalid values inside S_Gravity()");
 
-        Movements[ID].y += Gravities[ID].Acceleration;
-        if (Movements[ID].y > Gravities[ID].MaxVelocity) { Movements[ID].y = Gravities[ID].MaxVelocity; }
+        Movements[ID].Velocity.y += Gravities[ID].Acceleration;
+        if (Movements[ID].Velocity.y > Gravities[ID].MaxVelocity) { Movements[ID].Velocity.y = Gravities[ID].MaxVelocity; }
     }
 }
 
@@ -74,20 +75,20 @@ void S_Collision(uint16_t* TempCollisionBoxArray, uint16_t LastCollisionBox)
         if (Overlap.width >= Overlap.height) // Vertical Collision
         {
             Enforce(Spatials[PlayerID].Position.y != Spatials[ID].Position.y, "Exact same y position");
-            Enforce(Movements[PlayerID].y != 0.0f, "Invariant broken inside S_Collision()");
+            //Enforce(Movements[PlayerID].y != 0.0f, "Invariant broken inside S_Collision()");
 
             // Player hits tile from below
-            if (Movements[PlayerID].y < 0.0f)
+            if (Movements[PlayerID].Velocity.y < 0.0f)
             {
                 Spatials[PlayerID].Position.y += Overlap.height;
-                Movements[PlayerID].y = 0.0f;
+                Movements[PlayerID].Velocity.y = 0.0f;
             }
 
             // Player hits tile from above
-            else if (Movements[PlayerID].y > 0.0f)
+            else if (Movements[PlayerID].Velocity.y > 0.0f)
             {
                 Spatials[PlayerID].Position.y -= Overlap.height;
-                Movements[PlayerID].y = 0.0f;
+                Movements[PlayerID].Velocity.y = 0.0f;
                 Gravities[PlayerID].Grounded = true;
             }
 
@@ -95,13 +96,20 @@ void S_Collision(uint16_t* TempCollisionBoxArray, uint16_t LastCollisionBox)
         else // Horizontal Collision
         {
             Enforce(Spatials[PlayerID].Position.x != Spatials[ID].Position.x, "Exact same x position");
-            Enforce(Movements[PlayerID].x != 0.0f, "Invariant broken inside S_Collision()");
 
             // Player hits tile from the right
-            if (Movements[PlayerID].x < 0.0f) { Spatials[PlayerID].Position.x += Overlap.width; }
+            if (Movements[PlayerID].Velocity.x < 0.0f)
+            {
+                Spatials[PlayerID].Position.x += Overlap.width;
+                Movements[PlayerID].Velocity.x = 0.0f;
+            }
 
             // Player hits tile from the left
-            else if (Movements[PlayerID].x > 0.0f) { Spatials[PlayerID].Position.x -= Overlap.width; }
+            else if (Movements[PlayerID].Velocity.x > 0.0f)
+            {
+                Spatials[PlayerID].Position.x -= Overlap.width;
+                Movements[PlayerID].Velocity.x = 0.0f;
+            }
         }
     }
 }
@@ -109,16 +117,43 @@ void S_Collision(uint16_t* TempCollisionBoxArray, uint16_t LastCollisionBox)
 void S_Movement(Input UserInput)
 {
     // Player
-    if (UserInput.Right && !UserInput.Left) { Spatials[PlayerID].Position.x += Movements[PlayerID].x; }
-    if (!UserInput.Right && UserInput.Left) { Spatials[PlayerID].Position.x -= Movements[PlayerID].x; }
+    if (UserInput.Right && !UserInput.Left)
+    {
+        Movements[PlayerID].Velocity.x = (float)PlayerSpeed;
+        Movements[PlayerID].Direction.x = 1.0f;
+        //Spatials[PlayerID].Position.x += Movements[PlayerID].x;
+
+        Animations[PlayerID].AnimationID = SamuraiWalk;
+        Animations[PlayerID].FramesInAnimation = FrameCountSamuraiWalk;
+        Animations[PlayerID].Duration = FrameDurationSamuraiWalk;
+    }
+    else if (!UserInput.Right && UserInput.Left)
+    {
+        Movements[PlayerID].Velocity.x = -(float)PlayerSpeed;
+        Movements[PlayerID].Direction.x = -1.0f;
+        //Spatials[PlayerID].Position.x -= Movements[PlayerID].x;
+
+        Animations[PlayerID].AnimationID = SamuraiWalk;
+        Animations[PlayerID].FramesInAnimation = FrameCountSamuraiWalk;
+        Animations[PlayerID].Duration = FrameDurationSamuraiWalk;
+    }
+    else
+    {
+        Movements[PlayerID].Velocity.x = 0.0f;
+
+        Animations[PlayerID].AnimationID = SamuraiIdle;
+        Animations[PlayerID].FramesInAnimation = FrameCountSamuraiIdle;
+        Animations[PlayerID].Duration = FrameDurationSamuraiIdle;
+    }
 
     if (UserInput.Up && Gravities[PlayerID].Grounded)
     {
-        Movements[PlayerID].y -= Gravities[PlayerID].Jump;
-        if (Movements[PlayerID].y < -Gravities[PlayerID].MaxVelocity) { Movements[PlayerID].y = -Gravities[PlayerID].MaxVelocity; }
+        Movements[PlayerID].Velocity.y -= Gravities[PlayerID].Jump;
+        if (Movements[PlayerID].Velocity.y < -Gravities[PlayerID].MaxVelocity) { Movements[PlayerID].Velocity.y = -Gravities[PlayerID].MaxVelocity; }
     }
 
-    if (!UserInput.Up && !Gravities[PlayerID].Grounded && Movements[PlayerID].y < 0.0f) { Movements[PlayerID].y = 0.0f; }
+    if (!UserInput.Up && !Gravities[PlayerID].Grounded && Movements[PlayerID].Velocity.y < 0.0f) { Movements[PlayerID].Velocity.y = 0.0f; }
 
-    Spatials[PlayerID].Position.y += Movements[PlayerID].y;
+    Spatials[PlayerID].Position.y += Movements[PlayerID].Velocity.y;
+    Spatials[PlayerID].Position.x += Movements[PlayerID].Velocity.x;
 }

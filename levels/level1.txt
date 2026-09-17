@@ -1,5 +1,5 @@
 # Player: EntityType, PositionX, PositionY, Scale, Speed, MaxVelocity, Jump, Acceleration, CollisionBoxX, CollisionBoxY
-0, 200, 200, 1, 8, 20, 16, 1, 128, 128
+0, 200, 200, 1, 20, 16, 1, 128, 128
 
 # Decorations: EntityType, TextureIndex, PositionX, PositionY, ScaleNumerator, ScaleDenominator
 2, 0, 0, 0, 1280, 576
@@ -21,3 +21,5 @@
 1, 66, 1040, 640, 80, 32, 80, 80
 1, 66, 1120, 640, 80, 32, 80, 80
 1, 66, 1200, 640, 80, 32, 80, 80
+1, 66, 1200, 560, 80, 32, 80, 80
+1, 66, 0, 560, 80, 32, 80, 80

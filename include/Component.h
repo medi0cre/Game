@@ -93,8 +93,13 @@ typedef struct {
     bool Grounded;
 } Gravity;
 
+typedef struct {
+    Vector2 Velocity;
+    Vector2 Direction;
+} Movement;
+
 extern Spatial* Spatials;
-extern Vector2* Movements;
+extern Movement* Movements;
 extern Gravity* Gravities;
 extern uint16_t* Textures;
 extern Animation* Animations;
