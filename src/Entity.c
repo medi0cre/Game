@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <Entity.h>
+#include <Game.h>
 #include <Utils.h>
 
 Entity* Entities = NULL;

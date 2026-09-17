@@ -2,8 +2,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define EntityMax 10000
-
 typedef struct {
     uint64_t ComponentMask;
     bool Active;

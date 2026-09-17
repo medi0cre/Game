@@ -2,11 +2,16 @@
 #include <stdbool.h>
 #include <Arena.h>
 
-#define WindowWidth 1280
-#define WindowHeight 720
-
 #define LevelPath "../levels/"
 #define AssetPath "../assets/"
+
+typedef enum {
+    WindowWidth = 1280,
+    WindowHeight = 720,
+    MaxLineSize = 1024,
+    ArenaSize = 33554432, // 32 Megabytes
+    EntityMax = 10000
+} GameConfig;
 
 typedef struct {
     bool Z;
@@ -23,6 +28,7 @@ extern uint16_t PlayerID;
 extern uint64_t GameFrame;
 
 void GameInit(void);
+void LoadAssets(void);
 void GameLoop(void);
 Input GetUserInput(void);
 void LoadLevel(const char* File);
