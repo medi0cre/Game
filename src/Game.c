@@ -25,17 +25,17 @@ void GameLoop(void)
     uint16_t LastSpatial = 0;
     uint16_t LastCollisionBox = 0;
 
-    uint16_t* TempSpatialArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
-    uint16_t* TempMovementArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
-    uint16_t* TempGravityArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
-    uint16_t* TempTextureArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
-    uint16_t* TempAnimationArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
-    uint16_t* TempCollisionBoxArray = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
+    uint16_t* TempSpatialArray = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    uint16_t* TempMovementArray = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    uint16_t* TempGravityArray = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    uint16_t* TempTextureArray = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    uint16_t* TempAnimationArray = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    uint16_t* TempCollisionBoxArray = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
 
     Enforce(TempSpatialArray && TempMovementArray && TempGravityArray
         && TempTextureArray && TempAnimationArray && TempCollisionBoxArray, "Failed to allocate temporary memory for rendering");
 
-    for (uint16_t i = 0; i < EntityMax; i++)
+    for (uint16_t i = 0; i < MaxEntityCount; i++)
     {
         if (!Entities[i].Active) { continue; }
 
@@ -135,7 +135,7 @@ void LoadLevel(const char* File)
                 }
 
                 uint16_t Dec = CreateEntity();
-                Enforce(Dec < EntityMax, "Failed to create entity");
+                Enforce(Dec < MaxEntityCount, "Failed to create entity");
 
                 Entities[Dec].ComponentMask = CSpatial | CTexture;
                 Spatials[Dec].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
@@ -163,7 +163,7 @@ void LoadLevel(const char* File)
                 }
 
                 uint16_t Tile = CreateEntity();
-                Enforce(Tile < EntityMax, "Failed to create entity");
+                Enforce(Tile < MaxEntityCount, "Failed to create entity");
 
                 Entities[Tile].ComponentMask = CSpatial | CTexture | CCollisionBox;
                 Spatials[Tile].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
@@ -194,7 +194,7 @@ void LoadLevel(const char* File)
 
                 Enforce(PlayerID == UINT16_MAX, "There should never be 2 players, serious bug");
                 PlayerID = CreateEntity();
-                Enforce(PlayerID < EntityMax, "Failed to create player");
+                Enforce(PlayerID < MaxEntityCount, "Failed to create player");
 
                 Entities[PlayerID].ComponentMask = CSpatial | CMovement | CGravity | CAnimation;
                 Spatials[PlayerID].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
@@ -240,13 +240,13 @@ void GameInit(void)
     LoadAssets();
 
     Enforce(ArenaInit(&GameArena, ArenaSize), "Failed to initialize arena");
-    Entities = ArenaAlloc(&GameArena, EntityMax * sizeof(Entity), _Alignof(Entity));
-    Spatials = ArenaAlloc(&GameArena, EntityMax * sizeof(Spatial), _Alignof(Spatial));
-    Movements = ArenaAlloc(&GameArena, EntityMax * sizeof(Movement), _Alignof(Movement));
-    Gravities = ArenaAlloc(&GameArena, EntityMax * sizeof(Gravity), _Alignof(Gravity));
-    Textures = ArenaAlloc(&GameArena, EntityMax * sizeof(uint16_t), _Alignof(uint16_t));
-    Animations = ArenaAlloc(&GameArena, EntityMax * sizeof(Animation), _Alignof(Animation));
-    CollisionBoxes = ArenaAlloc(&GameArena, EntityMax * sizeof(CollisionBox), _Alignof(CollisionBox));
+    Entities = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(Entity), _Alignof(Entity));
+    Spatials = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(Spatial), _Alignof(Spatial));
+    Movements = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(Movement), _Alignof(Movement));
+    Gravities = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(Gravity), _Alignof(Gravity));
+    Textures = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    Animations = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(Animation), _Alignof(Animation));
+    CollisionBoxes = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(CollisionBox), _Alignof(CollisionBox));
 
     Enforce(Entities && Spatials && Movements && Gravities
         && Textures && Animations && CollisionBoxes, "Failed to initialize component arrays");

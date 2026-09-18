@@ -5,12 +5,12 @@
 
 void S_Gravity(uint16_t* TempGravityArray, uint16_t LastGravity)
 {
-    Enforce(TempGravityArray && LastGravity < EntityMax, "Precondition broken inside S_Gravity()");
+    Enforce(TempGravityArray && LastGravity < MaxEntityCount, "Precondition broken inside S_Gravity()");
 
     for (uint16_t i = 0; i < LastGravity; i++)
     {
         uint16_t ID = TempGravityArray[i];
-        Enforce(ID < EntityMax
+        Enforce(ID < MaxEntityCount
             && Gravities[ID].Acceleration > 0.0f
             && Movements[ID].Velocity.y <= Gravities[ID].MaxVelocity && Movements[ID].Velocity.y >= -Gravities[ID].MaxVelocity
             , "Invalid values inside S_Gravity()");
@@ -22,12 +22,12 @@ void S_Gravity(uint16_t* TempGravityArray, uint16_t LastGravity)
 
 void S_Animation(uint16_t* TempAnimationArray, uint16_t LastAnimation)
 {
-    Enforce(TempAnimationArray && LastAnimation < EntityMax, "Precondition broken inside S_Animation()");
+    Enforce(TempAnimationArray && LastAnimation < MaxEntityCount, "Precondition broken inside S_Animation()");
 
     for (uint16_t i = 0; i < LastAnimation; i++)
     {
         uint16_t ID = TempAnimationArray[i];
-        Enforce(ID < EntityMax, "Invalid ID inside S_Animation()");
+        Enforce(ID < MaxEntityCount, "Invalid ID inside S_Animation()");
 
         if (Animations[ID].FramesPassed > Animations[ID].Duration)
         {
@@ -41,7 +41,7 @@ void S_Animation(uint16_t* TempAnimationArray, uint16_t LastAnimation)
 
 void S_Collision(uint16_t* TempCollisionBoxArray, uint16_t LastCollisionBox)
 {
-    Enforce(TempCollisionBoxArray && LastCollisionBox < EntityMax, "Precondition broken inside S_Collision()");
+    Enforce(TempCollisionBoxArray && LastCollisionBox < MaxEntityCount, "Precondition broken inside S_Collision()");
     Gravities[PlayerID].Grounded = false;
 
     for (uint16_t i = 0; i < LastCollisionBox; i++)
@@ -49,7 +49,7 @@ void S_Collision(uint16_t* TempCollisionBoxArray, uint16_t LastCollisionBox)
         uint16_t ID = TempCollisionBoxArray[i];
         if (ID == PlayerID) { continue; }
 
-        Enforce(ID < EntityMax, "Invalid ID inside S_Collision()");
+        Enforce(ID < MaxEntityCount, "Invalid ID inside S_Collision()");
 
         Rectangle PlayerBox = {
             .x = Spatials[PlayerID].Position.x,
@@ -123,9 +123,9 @@ void S_Movement(Input UserInput)
         Movements[PlayerID].Direction.x = 1.0f;
         //Spatials[PlayerID].Position.x += Movements[PlayerID].x;
 
-        Animations[PlayerID].AnimationID = SamuraiWalk;
-        Animations[PlayerID].FramesInAnimation = FrameCountSamuraiWalk;
-        Animations[PlayerID].Duration = FrameDurationSamuraiWalk;
+        Animations[PlayerID].AnimationID = SamuraiRun;
+        Animations[PlayerID].FramesInAnimation = FrameCountSamuraiRun;
+        Animations[PlayerID].Duration = FrameDurationSamuraiRun;
     }
     else if (!UserInput.Right && UserInput.Left)
     {
@@ -133,9 +133,9 @@ void S_Movement(Input UserInput)
         Movements[PlayerID].Direction.x = -1.0f;
         //Spatials[PlayerID].Position.x -= Movements[PlayerID].x;
 
-        Animations[PlayerID].AnimationID = SamuraiWalk;
-        Animations[PlayerID].FramesInAnimation = FrameCountSamuraiWalk;
-        Animations[PlayerID].Duration = FrameDurationSamuraiWalk;
+        Animations[PlayerID].AnimationID = SamuraiRun;
+        Animations[PlayerID].FramesInAnimation = FrameCountSamuraiRun;
+        Animations[PlayerID].Duration = FrameDurationSamuraiRun;
     }
     else
     {

@@ -9,7 +9,7 @@ uint16_t CreateEntity(void)
 {
     Enforce(Entities, "Entities has not been initialized yet");
 
-    for (uint16_t i = 0; i < EntityMax; i++)
+    for (uint16_t i = 0; i < MaxEntityCount; i++)
     {
         if (!Entities[i].Active)
         {
@@ -24,7 +24,7 @@ uint16_t CreateEntity(void)
 
 void DestroyEntity(uint16_t _Entity_)
 {
-    Enforce(Entities && _Entity_ < EntityMax && Entities[_Entity_].Active, "DestroyEntity() error");
+    Enforce(Entities && _Entity_ < MaxEntityCount && Entities[_Entity_].Active, "DestroyEntity() error");
     Entities[_Entity_].Active = false;
     Entities[_Entity_].ComponentMask = 0;
 }
