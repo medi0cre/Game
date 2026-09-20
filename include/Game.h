@@ -1,6 +1,8 @@
 #pragma once
 #include <stdbool.h>
 #include <Arena.h>
+#include <World.h>
+#include <Assets.h>
 
 #define LevelPath "../levels/"
 #define AssetPath "../assets/"
@@ -24,12 +26,21 @@ typedef struct {
     bool Right;
 } Input;
 
-extern Arena GameArena;
-extern uint16_t PlayerID;
-extern uint64_t GameFrame;
+typedef struct {
+    Texture TextureArray[TextureCount];
+    Texture AnimationArray[AnimationCount];
+    World GameWorld;
+    Arena GameArena;
+    uint64_t GameFrame;
+    Input UserInput;
+    uint16_t PlayerID;
+} Game;
+
+extern Game CurrentGame;
 
 void GameInit(void);
 void LoadAssets(void);
-void GameLoop(void);
-Input GetUserInput(void);
+void GetUserInput(void);
+void Update(void);
+void Render(void);
 void LoadLevel(const char* File);

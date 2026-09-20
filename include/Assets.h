@@ -1,12 +1,6 @@
 #pragma once
 #include <raylib.h>
 
-#define AnimationCount 35
-#define TextureCount 125
-
-extern Texture AnimationArray[AnimationCount];
-extern Texture TextureArray[TextureCount];
-
 typedef enum {
     BGFull = 0,
     BGLayer1 = 1,
@@ -132,7 +126,8 @@ typedef enum {
     Tile57 = 121,
     Tile58 = 122,
     Tile59 = 123,
-    Tile60 = 124
+    Tile60 = 124,
+    TextureCount = 125
 } TextureIndex;
 
 typedef enum {
@@ -171,6 +166,7 @@ typedef enum {
     ShinobiRun = 32,
     ShinobiShield = 33,
     ShinobiWalk = 34,
+    AnimationCount = 35
 } AnimationIndex;
 
 typedef enum {
@@ -229,7 +225,7 @@ typedef enum {
     FrameDurationSamuraiHurt = 20,
     FrameDurationSamuraiIdle = 10,
     FrameDurationSamuraiJump = 10,
-    FrameDurationSamuraiRun = 5,
+    FrameDurationSamuraiRun = 3,
     FrameDurationSamuraiShield = 4,
     FrameDurationSamuraiWalk = 5,
     FrameDurationShinobiAttack1 = 2,

@@ -2,67 +2,80 @@
 #include <Assets.h>
 #include <Utils.h>
 #include <Component.h>
+#include <math.h>
 
-void S_Gravity(uint16_t* TempGravityArray, uint16_t LastGravity)
+void S_Gravity(uint16_t LastGravity)
 {
-    Enforce(TempGravityArray && LastGravity < MaxEntityCount, "Precondition broken inside S_Gravity()");
+    Enforce(LastGravity < MaxEntityCount, "Precondition broken inside S_Gravity()");
 
     for (uint16_t i = 0; i < LastGravity; i++)
     {
-        uint16_t ID = TempGravityArray[i];
+        uint16_t ID = CurrentGame.GameWorld.TempGravityArray[i];
         Enforce(ID < MaxEntityCount
-            && Gravities[ID].Acceleration > 0.0f
-            && Movements[ID].Velocity.y <= Gravities[ID].MaxVelocity && Movements[ID].Velocity.y >= -Gravities[ID].MaxVelocity
+            && CurrentGame.GameWorld.Gravities[ID].Acceleration > 0.0f
+            && CurrentGame.GameWorld.Movements[ID].Magnitude.y <= CurrentGame.GameWorld.Gravities[ID].MaxVelocity
+            && CurrentGame.GameWorld.Movements[ID].Magnitude.y >= 0.0f
+            && (CurrentGame.GameWorld.Movements[ID].Direction.y == 1.0f || CurrentGame.GameWorld.Movements[ID].Direction.y == -1.0f)
             , "Invalid values inside S_Gravity()");
 
-        Movements[ID].Velocity.y += Gravities[ID].Acceleration;
-        if (Movements[ID].Velocity.y > Gravities[ID].MaxVelocity) { Movements[ID].Velocity.y = Gravities[ID].MaxVelocity; }
+        float Velocity = CurrentGame.GameWorld.Movements[ID].Magnitude.y * CurrentGame.GameWorld.Movements[ID].Direction.y;
+        Velocity += CurrentGame.GameWorld.Gravities[ID].Acceleration;
+
+        Velocity = fminf(Velocity, CurrentGame.GameWorld.Gravities[ID].MaxVelocity);
+        CurrentGame.GameWorld.Movements[ID].Magnitude.y = fabsf(Velocity);
+        CurrentGame.GameWorld.Movements[ID].Direction.y = Velocity >= 0.0f ? 1.0f : -1.0f;
     }
 }
 
-void S_Animation(uint16_t* TempAnimationArray, uint16_t LastAnimation)
+void S_Animation(void)
 {
-    Enforce(TempAnimationArray && LastAnimation < MaxEntityCount, "Precondition broken inside S_Animation()");
+    Enforce(CurrentGame.GameWorld.TempAnimationArray
+        && CurrentGame.GameWorld.LastAnimation < MaxEntityCount
+        , "Precondition broken inside S_Animation()");
 
-    for (uint16_t i = 0; i < LastAnimation; i++)
+    for (uint16_t i = 0; i < CurrentGame.GameWorld.LastAnimation; i++)
     {
-        uint16_t ID = TempAnimationArray[i];
+        uint16_t ID = CurrentGame.GameWorld.TempAnimationArray[i];
         Enforce(ID < MaxEntityCount, "Invalid ID inside S_Animation()");
+        Animation* A = &CurrentGame.GameWorld.Animations[ID];
 
-        if (Animations[ID].FramesPassed > Animations[ID].Duration)
+        if (A->FramesPassed > A->Duration)
         {
-            Animations[ID].CurrentFrameInAnimation = (Animations[ID].CurrentFrameInAnimation + 1) % Animations[ID].FramesInAnimation;
-            Animations[ID].FramesPassed = 0;
+            A->CurrentFrameInAnimation = (A->CurrentFrameInAnimation + 1) % A->FramesInAnimation;
+            A->FramesPassed = 0;
+            continue;
         }
 
-        Animations[ID].FramesPassed++;
+        A->FramesPassed++;
     }
 }
 
-void S_Collision(uint16_t* TempCollisionBoxArray, uint16_t LastCollisionBox)
+void S_Collision(uint16_t LastCollisionBox)
 {
-    Enforce(TempCollisionBoxArray && LastCollisionBox < MaxEntityCount, "Precondition broken inside S_Collision()");
-    Gravities[PlayerID].Grounded = false;
+    Enforce(LastCollisionBox < MaxEntityCount, "Precondition broken inside S_Collision()");
+
+    uint16_t PID = CurrentGame.PlayerID;
+    CurrentGame.GameWorld.Gravities[PID].Grounded = false;
 
     for (uint16_t i = 0; i < LastCollisionBox; i++)
     {
-        uint16_t ID = TempCollisionBoxArray[i];
-        if (ID == PlayerID) { continue; }
+        uint16_t ID = CurrentGame.GameWorld.TempCollisionBoxArray[i];
+        if (ID == PID) { continue; }
 
         Enforce(ID < MaxEntityCount, "Invalid ID inside S_Collision()");
 
         Rectangle PlayerBox = {
-            .x = Spatials[PlayerID].Position.x,
-            .y = Spatials[PlayerID].Position.y,
-            .width = CollisionBoxes[PlayerID].Width,
-            .height = CollisionBoxes[PlayerID].Height
+            .x = CurrentGame.GameWorld.Spatials[PID].Position.x,
+            .y = CurrentGame.GameWorld.Spatials[PID].Position.y,
+            .width = CurrentGame.GameWorld.CollisionBoxes[PID].Width,
+            .height = CurrentGame.GameWorld.CollisionBoxes[PID].Height
         };
 
         Rectangle TileBox = {
-            .x = Spatials[ID].Position.x,
-            .y = Spatials[ID].Position.y,
-            .width = CollisionBoxes[ID].Width,
-            .height = CollisionBoxes[ID].Height
+            .x = CurrentGame.GameWorld.Spatials[ID].Position.x,
+            .y = CurrentGame.GameWorld.Spatials[ID].Position.y,
+            .width = CurrentGame.GameWorld.CollisionBoxes[ID].Width,
+            .height = CurrentGame.GameWorld.CollisionBoxes[ID].Height
         };
 
         Rectangle Overlap = GetCollisionRec(PlayerBox, TileBox);
@@ -70,97 +83,114 @@ void S_Collision(uint16_t* TempCollisionBoxArray, uint16_t LastCollisionBox)
         Enforce(Overlap.width > 0.0f && Overlap.height > 0.0f, "Buggy overlap");
 
         // TODO: Find a better way to handle this. Consider using previous position to check if there was a new collision
-        // Enforce(Overlap.width != Overlap.height, "Exact same collision resolution between object and player");
 
         if (Overlap.width >= Overlap.height) // Vertical Collision
         {
-            Enforce(Spatials[PlayerID].Position.y != Spatials[ID].Position.y, "Exact same y position");
-            //Enforce(Movements[PlayerID].y != 0.0f, "Invariant broken inside S_Collision()");
+            Enforce(CurrentGame.GameWorld.Spatials[PID].Position.y != CurrentGame.GameWorld.Spatials[ID].Position.y
+                , "Exact same y position");
+
+            float Velocity = CurrentGame.GameWorld.Movements[PID].Magnitude.y * CurrentGame.GameWorld.Movements[PID].Direction.y;
 
             // Player hits tile from below
-            if (Movements[PlayerID].Velocity.y < 0.0f)
+            if (Velocity < 0.0f)
             {
-                Spatials[PlayerID].Position.y += Overlap.height;
-                Movements[PlayerID].Velocity.y = 0.0f;
+                CurrentGame.GameWorld.Spatials[PID].Position.y += Overlap.height;
+                CurrentGame.GameWorld.Movements[PID].Magnitude.y = 0.0f;
+                CurrentGame.GameWorld.Movements[PID].Direction.y = 1.0f;
             }
 
             // Player hits tile from above
-            else if (Movements[PlayerID].Velocity.y > 0.0f)
+            else if (Velocity > 0.0f)
             {
-                Spatials[PlayerID].Position.y -= Overlap.height;
-                Movements[PlayerID].Velocity.y = 0.0f;
-                Gravities[PlayerID].Grounded = true;
+                CurrentGame.GameWorld.Spatials[PID].Position.y -= Overlap.height;
+                CurrentGame.GameWorld.Movements[PID].Magnitude.y = 0.0f;
+                CurrentGame.GameWorld.Movements[PID].Direction.y = 1.0f;
+                CurrentGame.GameWorld.Gravities[PID].Grounded = true;
             }
 
         }
         else // Horizontal Collision
         {
-            Enforce(Spatials[PlayerID].Position.x != Spatials[ID].Position.x, "Exact same x position");
+            Enforce(CurrentGame.GameWorld.Spatials[PID].Position.x != CurrentGame.GameWorld.Spatials[ID].Position.x
+                , "Exact same x position");
+
+            float Velocity = CurrentGame.GameWorld.Movements[PID].Magnitude.x * CurrentGame.GameWorld.Movements[PID].Direction.x;
 
             // Player hits tile from the right
-            if (Movements[PlayerID].Velocity.x < 0.0f)
+            if (Velocity < 0.0f)
             {
-                Spatials[PlayerID].Position.x += Overlap.width;
-                Movements[PlayerID].Velocity.x = 0.0f;
+                CurrentGame.GameWorld.Spatials[PID].Position.x += Overlap.width;
+                CurrentGame.GameWorld.Movements[PID].Magnitude.x = 0.0f;
             }
 
             // Player hits tile from the left
-            else if (Movements[PlayerID].Velocity.x > 0.0f)
+            else if (Velocity > 0.0f)
             {
-                Spatials[PlayerID].Position.x -= Overlap.width;
-                Movements[PlayerID].Velocity.x = 0.0f;
+                CurrentGame.GameWorld.Spatials[PID].Position.x -= Overlap.width;
+                CurrentGame.GameWorld.Movements[PID].Magnitude.x = 0.0f;
             }
         }
     }
 }
 
-void S_Movement(Input UserInput)
+void S_Movement(void)
 {
-    // Player
+    uint16_t PID = CurrentGame.PlayerID;
+    Input UserInput = CurrentGame.UserInput;
+    Enforce(PID < MaxEntityCount, "Invalid Player ID");
+
     if (UserInput.Right && !UserInput.Left)
     {
-        Movements[PlayerID].Velocity.x = (float)PlayerSpeed;
-        Movements[PlayerID].Direction.x = 1.0f;
-        //Spatials[PlayerID].Position.x += Movements[PlayerID].x;
+        CurrentGame.GameWorld.Movements[PID].Magnitude.x = (float)PlayerSpeed;
+        CurrentGame.GameWorld.Movements[PID].Direction.x = 1.0f;
 
-        Animations[PlayerID].AnimationID = SamuraiRun;
-        Animations[PlayerID].FramesInAnimation = FrameCountSamuraiRun;
-        Animations[PlayerID].Duration = FrameDurationSamuraiRun;
+        CurrentGame.GameWorld.Animations[PID].AnimationID = SamuraiRun;
+        CurrentGame.GameWorld.Animations[PID].FramesInAnimation = FrameCountSamuraiRun;
+        CurrentGame.GameWorld.Animations[PID].Duration = FrameDurationSamuraiRun;
     }
     else if (!UserInput.Right && UserInput.Left)
     {
-        Movements[PlayerID].Velocity.x = -(float)PlayerSpeed;
-        Movements[PlayerID].Direction.x = -1.0f;
-        //Spatials[PlayerID].Position.x -= Movements[PlayerID].x;
+        CurrentGame.GameWorld.Movements[PID].Magnitude.x = (float)PlayerSpeed;
+        CurrentGame.GameWorld.Movements[PID].Direction.x = -1.0f;
 
-        Animations[PlayerID].AnimationID = SamuraiRun;
-        Animations[PlayerID].FramesInAnimation = FrameCountSamuraiRun;
-        Animations[PlayerID].Duration = FrameDurationSamuraiRun;
+        CurrentGame.GameWorld.Animations[PID].AnimationID = SamuraiRun;
+        CurrentGame.GameWorld.Animations[PID].FramesInAnimation = FrameCountSamuraiRun;
+        CurrentGame.GameWorld.Animations[PID].Duration = FrameDurationSamuraiRun;
     }
     else
     {
-        Movements[PlayerID].Velocity.x = 0.0f;
+        CurrentGame.GameWorld.Movements[PID].Magnitude.x = 0.0f;
 
-        Animations[PlayerID].AnimationID = SamuraiIdle;
-        Animations[PlayerID].FramesInAnimation = FrameCountSamuraiIdle;
-        Animations[PlayerID].Duration = FrameDurationSamuraiIdle;
+        CurrentGame.GameWorld.Animations[PID].AnimationID = SamuraiIdle;
+        CurrentGame.GameWorld.Animations[PID].FramesInAnimation = FrameCountSamuraiIdle;
+        CurrentGame.GameWorld.Animations[PID].Duration = FrameDurationSamuraiIdle;
     }
 
-    if (UserInput.Up && Gravities[PlayerID].Grounded)
+    if (UserInput.Up && CurrentGame.GameWorld.Gravities[PID].Grounded)
     {
-        Movements[PlayerID].Velocity.y -= Gravities[PlayerID].Jump;
-        if (Movements[PlayerID].Velocity.y < -Gravities[PlayerID].MaxVelocity) { Movements[PlayerID].Velocity.y = -Gravities[PlayerID].MaxVelocity; }
+        float Velocity = CurrentGame.GameWorld.Movements[PID].Magnitude.y * CurrentGame.GameWorld.Movements[PID].Direction.y;
+        Velocity = -CurrentGame.GameWorld.Gravities[PID].Jump;
+        Velocity = fmaxf(Velocity, -CurrentGame.GameWorld.Gravities[PID].MaxVelocity);
+
+        CurrentGame.GameWorld.Movements[PID].Magnitude.y = fabsf(Velocity);
+        CurrentGame.GameWorld.Movements[PID].Direction.y = Velocity >= 0.0f ? 1.0f : -1.0f;
     }
 
-    if (!UserInput.Up && !Gravities[PlayerID].Grounded && Movements[PlayerID].Velocity.y < 0.0f) { Movements[PlayerID].Velocity.y = 0.0f; }
-
-    if (!Gravities[PlayerID].Grounded)
+    if (!UserInput.Up && !CurrentGame.GameWorld.Gravities[PID].Grounded
+        && CurrentGame.GameWorld.Movements[PID].Magnitude.y
+        * CurrentGame.GameWorld.Movements[PID].Direction.y < 0.0f)
     {
-        Animations[PlayerID].AnimationID = SamuraiJump;
-        Animations[PlayerID].FramesInAnimation = FrameCountSamuraiJump;
-        Animations[PlayerID].Duration = FrameDurationSamuraiJump;
+        CurrentGame.GameWorld.Movements[PID].Magnitude.y = 0.0f;
+        CurrentGame.GameWorld.Movements[PID].Direction.y = 1.0f;
     }
 
-    Spatials[PlayerID].Position.y += Movements[PlayerID].Velocity.y;
-    Spatials[PlayerID].Position.x += Movements[PlayerID].Velocity.x;
+    if (!CurrentGame.GameWorld.Gravities[PID].Grounded)
+    {
+        CurrentGame.GameWorld.Animations[PID].AnimationID = SamuraiJump;
+        CurrentGame.GameWorld.Animations[PID].FramesInAnimation = FrameCountSamuraiJump;
+        CurrentGame.GameWorld.Animations[PID].Duration = FrameDurationSamuraiJump;
+    }
+
+    CurrentGame.GameWorld.Spatials[PID].Position.y += CurrentGame.GameWorld.Movements[PID].Magnitude.y * CurrentGame.GameWorld.Movements[PID].Direction.y;
+    CurrentGame.GameWorld.Spatials[PID].Position.x += CurrentGame.GameWorld.Movements[PID].Magnitude.x * CurrentGame.GameWorld.Movements[PID].Direction.x;
 }

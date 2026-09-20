@@ -6,92 +6,81 @@
 #include <System.h>
 #include <raylib.h>
 
-Arena GameArena = { 0 };
-uint16_t PlayerID = UINT16_MAX;
-uint64_t GameFrame = 0;
+Game CurrentGame = { 0 };
 
-void GameLoop(void)
+void Update(void)
 {
-    // Get User Input
-    Input UserInput = GetUserInput();
-
-    // Update
-    ArenaSnapshot(&GameArena);
-
-    uint16_t LastAnimation = 0;
-    uint16_t LastTexture = 0;
     uint16_t LastGravity = 0;
     uint16_t LastMovement = 0;
     uint16_t LastSpatial = 0;
     uint16_t LastCollisionBox = 0;
 
-    uint16_t* TempSpatialArray = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
-    uint16_t* TempMovementArray = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
-    uint16_t* TempGravityArray = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
-    uint16_t* TempTextureArray = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
-    uint16_t* TempAnimationArray = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
-    uint16_t* TempCollisionBoxArray = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
-
-    Enforce(TempSpatialArray && TempMovementArray && TempGravityArray
-        && TempTextureArray && TempAnimationArray && TempCollisionBoxArray, "Failed to allocate temporary memory for rendering");
+    // Declare these in the World struct since they are needed for rendering
+    CurrentGame.GameWorld.LastAnimation = 0;
+    CurrentGame.GameWorld.LastTexture = 0;
 
     for (uint16_t i = 0; i < MaxEntityCount; i++)
     {
-        if (!Entities[i].Active) { continue; }
+        if (!CurrentGame.GameWorld.Actives[i]) { continue; }
+        uint64_t Component = CurrentGame.GameWorld.Components[i];
+        Enforce(Component != 0, "Useless entity");
 
-        if (Entities[i].ComponentMask & CSpatial) { TempSpatialArray[LastSpatial++] = i; }
-        if (Entities[i].ComponentMask & CCollisionBox) { TempCollisionBoxArray[LastCollisionBox++] = i; }
-        if (Entities[i].ComponentMask & CMovement) { TempMovementArray[LastMovement++] = i; }
-        if (Entities[i].ComponentMask & CGravity) { TempGravityArray[LastGravity++] = i; }
-        if (Entities[i].ComponentMask & CAnimation) { TempAnimationArray[LastAnimation++] = i; }
-        if (Entities[i].ComponentMask & CTexture) { TempTextureArray[LastTexture++] = i; }
+        if (Component & CSpatial) { CurrentGame.GameWorld.TempSpatialArray[LastSpatial++] = i; }
+        if (Component & CCollisionBox) { CurrentGame.GameWorld.TempCollisionBoxArray[LastCollisionBox++] = i; }
+        if (Component & CMovement) { CurrentGame.GameWorld.TempMovementArray[LastMovement++] = i; }
+        if (Component & CGravity) { CurrentGame.GameWorld.TempGravityArray[LastGravity++] = i; }
+        if (Component & CAnimation) { CurrentGame.GameWorld.TempAnimationArray[CurrentGame.GameWorld.LastAnimation++] = i; }
+        if (Component & CTexture) { CurrentGame.GameWorld.TempTextureArray[CurrentGame.GameWorld.LastTexture++] = i; }
     }
 
-    S_Gravity(TempGravityArray, LastGravity);
-    S_Movement(UserInput);
-    S_Collision(TempCollisionBoxArray, LastCollisionBox);
-    S_Animation(TempAnimationArray, LastAnimation);
+    S_Gravity(LastGravity);
+    S_Movement();
+    S_Collision(LastCollisionBox);
+    S_Animation();
 
-    // Render
+    CurrentGame.GameFrame++;
+}
+
+void Render(void)
+{
     BeginDrawing();
     ClearBackground(BLACK);
 
-    for (uint16_t i = 0; i < LastTexture; i++)
+    for (uint16_t i = 0; i < CurrentGame.GameWorld.LastTexture; i++)
     {
-        uint16_t ID = TempTextureArray[i];
-        Enforce(Entities[ID].Active, "Inactive entity cannot be rendered");
-        DrawTextureEx(TextureArray[Textures[ID]], Spatials[ID].Position, 0.0f, Spatials[ID].Scale, WHITE);
+        uint16_t ID = CurrentGame.GameWorld.TempTextureArray[i];
+        Enforce(ID < MaxEntityCount && CurrentGame.GameWorld.Textures[ID] < TextureCount, "Invalid texture");
+        DrawTextureEx(CurrentGame.TextureArray[CurrentGame.GameWorld.Textures[ID]],
+            CurrentGame.GameWorld.Spatials[ID].Position, 0.0f, CurrentGame.GameWorld.Spatials[ID].Scale, WHITE);
     }
 
-    for (uint16_t i = 0; i < LastAnimation; i++)
+    for (uint16_t i = 0; i < CurrentGame.GameWorld.LastAnimation; i++)
     {
-        uint16_t ID = TempAnimationArray[i];
-        Enforce(Entities[ID].Active, "Inactive entity cannot be rendered");
-        Enforce(ID == PlayerID, "Not a player, need to handle Source.width differently now");
+        uint16_t ID = CurrentGame.GameWorld.TempAnimationArray[i];
+        Enforce(ID < MaxEntityCount, "Invalid animation");
+        Enforce(ID == CurrentGame.PlayerID, "Not a player, need to handle Source.width differently now, remove later");
 
-        uint16_t FrameWidth = AnimationArray[Animations[ID].AnimationID].width / Animations[ID].FramesInAnimation;
+        Animation A = CurrentGame.GameWorld.Animations[ID];
+        uint16_t FrameWidth = CurrentGame.AnimationArray[A.AnimationID].width / A.FramesInAnimation;
 
         Rectangle Source = {
-            .x = FrameWidth * Animations[ID].CurrentFrameInAnimation,
+            .x = FrameWidth * A.CurrentFrameInAnimation,
             .y = 0.0f,
-            .width = Movements[ID].Direction.x * FrameWidth,
-            .height = AnimationArray[Animations[ID].AnimationID].height
+            .width = CurrentGame.GameWorld.Movements[ID].Direction.x * FrameWidth,
+            .height = CurrentGame.AnimationArray[A.AnimationID].height
         };
 
         Rectangle Destination = {
-            .x = Spatials[ID].Position.x,
-            .y = Spatials[ID].Position.y,
-            .width = Source.width * Spatials[ID].Scale,
-            .height = Source.height * Spatials[ID].Scale
+            .x = CurrentGame.GameWorld.Spatials[ID].Position.x,
+            .y = CurrentGame.GameWorld.Spatials[ID].Position.y,
+            .width = Source.width * CurrentGame.GameWorld.Spatials[ID].Scale,
+            .height = Source.height * CurrentGame.GameWorld.Spatials[ID].Scale
         };
 
-        DrawTexturePro(AnimationArray[Animations[ID].AnimationID], Source, Destination, (Vector2) { 0.0f, 0.0f }, 0.0f, WHITE);
+        DrawTexturePro(CurrentGame.AnimationArray[A.AnimationID], Source, Destination, (Vector2) { 0.0f, 0.0f }, 0.0f, WHITE);
     }
 
-    ArenaResetToSnapshot(&GameArena);
     EndDrawing();
-
-    GameFrame++;
 }
 
 void LoadLevel(const char* File)
@@ -99,8 +88,8 @@ void LoadLevel(const char* File)
     FILE* Level = fopen(File, "r");
     Enforce(Level, "Failed to load level for the game");
 
-    ArenaSnapshot(&GameArena);
-    char* Line = ArenaAlloc(&GameArena, MaxLineSize, _Alignof(char));
+    ArenaSnapshot(&CurrentGame.GameArena);
+    char* Line = ArenaAlloc(&CurrentGame.GameArena, MaxLineSize, _Alignof(char));
     Enforce(Line, "Failed to allocate line buffer");
 
     while (fgets(Line, MaxLineSize, Level) != NULL)
@@ -137,10 +126,10 @@ void LoadLevel(const char* File)
                 uint16_t Dec = CreateEntity();
                 Enforce(Dec < MaxEntityCount, "Failed to create entity");
 
-                Entities[Dec].ComponentMask = CSpatial | CTexture;
-                Spatials[Dec].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
-                Spatials[Dec].Scale = (float)ScaleNumerator / (float)ScaleDenominator;
-                Textures[Dec] = (uint16_t)TextureID;
+                CurrentGame.GameWorld.Components[Dec] = CSpatial | CTexture;
+                CurrentGame.GameWorld.Spatials[Dec].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
+                CurrentGame.GameWorld.Spatials[Dec].Scale = (float)ScaleNumerator / (float)ScaleDenominator;
+                CurrentGame.GameWorld.Textures[Dec] = (uint16_t)TextureID;
 
                 break;
             }
@@ -165,11 +154,11 @@ void LoadLevel(const char* File)
                 uint16_t Tile = CreateEntity();
                 Enforce(Tile < MaxEntityCount, "Failed to create entity");
 
-                Entities[Tile].ComponentMask = CSpatial | CTexture | CCollisionBox;
-                Spatials[Tile].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
-                Spatials[Tile].Scale = (float)ScaleNumerator / (float)ScaleDenominator;
-                Textures[Tile] = (uint16_t)TextureID;
-                CollisionBoxes[Tile] = (CollisionBox) { .Width = CollisionBoxX, .Height = CollisionBoxY };
+                CurrentGame.GameWorld.Components[Tile] = CSpatial | CTexture | CCollisionBox;
+                CurrentGame.GameWorld.Spatials[Tile].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
+                CurrentGame.GameWorld.Spatials[Tile].Scale = (float)ScaleNumerator / (float)ScaleDenominator;
+                CurrentGame.GameWorld.Textures[Tile] = (uint16_t)TextureID;
+                CurrentGame.GameWorld.CollisionBoxes[Tile] = (CollisionBox) { .Width = CollisionBoxX, .Height = CollisionBoxY };
 
                 break;
             }
@@ -192,28 +181,28 @@ void LoadLevel(const char* File)
                     continue;
                 }
 
-                Enforce(PlayerID == UINT16_MAX, "There should never be 2 players, serious bug");
-                PlayerID = CreateEntity();
-                Enforce(PlayerID < MaxEntityCount, "Failed to create player");
+                uint16_t ID = CreateEntity();
+                Enforce(ID < MaxEntityCount, "Failed to create player");
+                CurrentGame.PlayerID = ID;
 
-                Entities[PlayerID].ComponentMask = CSpatial | CMovement | CGravity | CAnimation;
-                Spatials[PlayerID].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
-                Spatials[PlayerID].Scale = (float)Scale;
-                CollisionBoxes[PlayerID] = (CollisionBox) { .Width = CollisionBoxX, .Height = CollisionBoxY };
+                CurrentGame.GameWorld.Components[ID] = CSpatial | CMovement | CGravity | CAnimation | CCollisionBox;
+                CurrentGame.GameWorld.Spatials[ID].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
+                CurrentGame.GameWorld.Spatials[ID].Scale = (float)Scale;
+                CurrentGame.GameWorld.CollisionBoxes[ID] = (CollisionBox) { .Width = CollisionBoxX, .Height = CollisionBoxY };
 
-                Movements[PlayerID] = (Movement) {
-                    .Velocity = { 0.0f, 0.0f },
+                CurrentGame.GameWorld.Movements[ID] = (Movement) {
+                    .Magnitude = { 0.0f, 0.0f },
                     .Direction = { 1.0f, 1.0f }
                 };
 
-                Gravities[PlayerID] = (Gravity) {
+                CurrentGame.GameWorld.Gravities[ID] = (Gravity) {
                     .Acceleration = (float)Acceleration * 0.50f,
                     .MaxVelocity = (float)MaxVelocity,
                     .Jump = (float)Jump,
                     .Grounded = false
                 };
 
-                Animations[PlayerID] = (Animation) {
+                CurrentGame.GameWorld.Animations[ID] = (Animation) {
                     .AnimationID = SamuraiIdle,
                     .CurrentFrameInAnimation = 0,
                     .FramesInAnimation = FrameCountSamuraiIdle,
@@ -231,30 +220,49 @@ void LoadLevel(const char* File)
         }
     }
 
-    ArenaResetToSnapshot(&GameArena);
+    ArenaResetToSnapshot(&CurrentGame.GameArena);
     fclose(Level);
 }
 
 void GameInit(void)
 {
+    CurrentGame.GameFrame = 0;
+    CurrentGame.PlayerID = UINT16_MAX;
+
     LoadAssets();
 
-    Enforce(ArenaInit(&GameArena, ArenaSize), "Failed to initialize arena");
-    Entities = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(Entity), _Alignof(Entity));
-    Spatials = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(Spatial), _Alignof(Spatial));
-    Movements = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(Movement), _Alignof(Movement));
-    Gravities = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(Gravity), _Alignof(Gravity));
-    Textures = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
-    Animations = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(Animation), _Alignof(Animation));
-    CollisionBoxes = ArenaAlloc(&GameArena, MaxEntityCount * sizeof(CollisionBox), _Alignof(CollisionBox));
+    Enforce(ArenaInit(&CurrentGame.GameArena, ArenaSize), "Failed to initialize arena");
 
-    Enforce(Entities && Spatials && Movements && Gravities
-        && Textures && Animations && CollisionBoxes, "Failed to initialize component arrays");
+    CurrentGame.GameWorld.Components = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint64_t), _Alignof(uint64_t));
+    CurrentGame.GameWorld.Actives = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(bool), _Alignof(bool));
+    CurrentGame.GameWorld.Spatials = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(Spatial), _Alignof(Spatial));
+    CurrentGame.GameWorld.Movements = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(Movement), _Alignof(Movement));
+    CurrentGame.GameWorld.Gravities = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(Gravity), _Alignof(Gravity));
+    CurrentGame.GameWorld.Textures = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    CurrentGame.GameWorld.Animations = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(Animation), _Alignof(Animation));
+    CurrentGame.GameWorld.CollisionBoxes = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(CollisionBox), _Alignof(CollisionBox));
+
+    CurrentGame.GameWorld.TempSpatialArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    CurrentGame.GameWorld.TempMovementArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    CurrentGame.GameWorld.TempGravityArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    CurrentGame.GameWorld.TempTextureArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    CurrentGame.GameWorld.TempAnimationArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    CurrentGame.GameWorld.TempCollisionBoxArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+
+    Enforce(CurrentGame.GameWorld.Components && CurrentGame.GameWorld.Actives
+        && CurrentGame.GameWorld.Spatials && CurrentGame.GameWorld.Movements
+        && CurrentGame.GameWorld.Gravities && CurrentGame.GameWorld.Textures
+        && CurrentGame.GameWorld.Animations && CurrentGame.GameWorld.CollisionBoxes
+
+        && CurrentGame.GameWorld.TempSpatialArray && CurrentGame.GameWorld.TempMovementArray
+        && CurrentGame.GameWorld.TempGravityArray && CurrentGame.GameWorld.TempTextureArray
+        && CurrentGame.GameWorld.TempAnimationArray && CurrentGame.GameWorld.TempCollisionBoxArray
+        , "Failed to initialize component arrays");
 }
 
-Input GetUserInput(void)
+void GetUserInput(void)
 {
-    return (Input) {
+    CurrentGame.UserInput = (Input) {
         .Z = IsKeyDown(KEY_Z),
         .X = IsKeyDown(KEY_X),
         .C = IsKeyDown(KEY_C),
@@ -268,166 +276,166 @@ Input GetUserInput(void)
 void LoadAssets(void)
 {
     // Load Animations
-    AnimationArray[FighterAttack1] = LoadTexture(AssetPath "animations/fighter/Attack_1.png");
-    AnimationArray[FighterAttack2] = LoadTexture(AssetPath "animations/fighter/Attack_2.png");
-    AnimationArray[FighterAttack3] = LoadTexture(AssetPath "animations/fighter/Attack_3.png");
-    AnimationArray[FighterDead] = LoadTexture(AssetPath "animations/fighter/Dead.png");
-    AnimationArray[FighterHurt] = LoadTexture(AssetPath "animations/fighter/Hurt.png");
-    AnimationArray[FighterIdle] = LoadTexture(AssetPath "animations/fighter/Idle.png");
-    AnimationArray[FighterJump] = LoadTexture(AssetPath "animations/fighter/Jump.png");
-    AnimationArray[FighterRun] = LoadTexture(AssetPath "animations/fighter/Run.png");
-    AnimationArray[FighterShield] = LoadTexture(AssetPath "animations/fighter/Shield.png");
-    AnimationArray[FighterWalk] = LoadTexture(AssetPath "animations/fighter/Walk.png");
-    AnimationArray[Chest] = LoadTexture(AssetPath "animations/misc/Chest.png");
-    AnimationArray[Coin] = LoadTexture(AssetPath "animations/misc/Coin.png");
-    AnimationArray[Flag] = LoadTexture(AssetPath "animations/misc/Flag.png");
-    AnimationArray[Key] = LoadTexture(AssetPath "animations/misc/Key.png");
-    AnimationArray[Rune] = LoadTexture(AssetPath "animations/misc/Rune.png");
-    AnimationArray[SamuraiAttack1] = LoadTexture(AssetPath "animations/samurai/Attack_1.png");
-    AnimationArray[SamuraiAttack2] = LoadTexture(AssetPath "animations/samurai/Attack_2.png");
-    AnimationArray[SamuraiAttack3] = LoadTexture(AssetPath "animations/samurai/Attack_3.png");
-    AnimationArray[SamuraiDead] = LoadTexture(AssetPath "animations/samurai/Dead.png");
-    AnimationArray[SamuraiHurt] = LoadTexture(AssetPath "animations/samurai/Hurt.png");
-    AnimationArray[SamuraiIdle] = LoadTexture(AssetPath "animations/samurai/Idle.png");
-    AnimationArray[SamuraiJump] = LoadTexture(AssetPath "animations/samurai/Jump.png");
-    AnimationArray[SamuraiRun] = LoadTexture(AssetPath "animations/samurai/Run.png");
-    AnimationArray[SamuraiShield] = LoadTexture(AssetPath "animations/samurai/Shield.png");
-    AnimationArray[SamuraiWalk] = LoadTexture(AssetPath "animations/samurai/Walk.png");
-    AnimationArray[ShinobiAttack1] = LoadTexture(AssetPath "animations/shinobi/Attack_1.png");
-    AnimationArray[ShinobiAttack2] = LoadTexture(AssetPath "animations/shinobi/Attack_2.png");
-    AnimationArray[ShinobiAttack3] = LoadTexture(AssetPath "animations/shinobi/Attack_3.png");
-    AnimationArray[ShinobiDead] = LoadTexture(AssetPath "animations/shinobi/Dead.png");
-    AnimationArray[ShinobiHurt] = LoadTexture(AssetPath "animations/shinobi/Hurt.png");
-    AnimationArray[ShinobiIdle] = LoadTexture(AssetPath "animations/shinobi/Idle.png");
-    AnimationArray[ShinobiJump] = LoadTexture(AssetPath "animations/shinobi/Jump.png");
-    AnimationArray[ShinobiRun] = LoadTexture(AssetPath "animations/shinobi/Run.png");
-    AnimationArray[ShinobiShield] = LoadTexture(AssetPath "animations/shinobi/Shield.png");
-    AnimationArray[ShinobiWalk] = LoadTexture(AssetPath "animations/shinobi/Walk.png");
+    CurrentGame.AnimationArray[FighterAttack1] = LoadTexture(AssetPath "animations/fighter/Attack_1.png");
+    CurrentGame.AnimationArray[FighterAttack2] = LoadTexture(AssetPath "animations/fighter/Attack_2.png");
+    CurrentGame.AnimationArray[FighterAttack3] = LoadTexture(AssetPath "animations/fighter/Attack_3.png");
+    CurrentGame.AnimationArray[FighterDead] = LoadTexture(AssetPath "animations/fighter/Dead.png");
+    CurrentGame.AnimationArray[FighterHurt] = LoadTexture(AssetPath "animations/fighter/Hurt.png");
+    CurrentGame.AnimationArray[FighterIdle] = LoadTexture(AssetPath "animations/fighter/Idle.png");
+    CurrentGame.AnimationArray[FighterJump] = LoadTexture(AssetPath "animations/fighter/Jump.png");
+    CurrentGame.AnimationArray[FighterRun] = LoadTexture(AssetPath "animations/fighter/Run.png");
+    CurrentGame.AnimationArray[FighterShield] = LoadTexture(AssetPath "animations/fighter/Shield.png");
+    CurrentGame.AnimationArray[FighterWalk] = LoadTexture(AssetPath "animations/fighter/Walk.png");
+    CurrentGame.AnimationArray[Chest] = LoadTexture(AssetPath "animations/misc/Chest.png");
+    CurrentGame.AnimationArray[Coin] = LoadTexture(AssetPath "animations/misc/Coin.png");
+    CurrentGame.AnimationArray[Flag] = LoadTexture(AssetPath "animations/misc/Flag.png");
+    CurrentGame.AnimationArray[Key] = LoadTexture(AssetPath "animations/misc/Key.png");
+    CurrentGame.AnimationArray[Rune] = LoadTexture(AssetPath "animations/misc/Rune.png");
+    CurrentGame.AnimationArray[SamuraiAttack1] = LoadTexture(AssetPath "animations/samurai/Attack_1.png");
+    CurrentGame.AnimationArray[SamuraiAttack2] = LoadTexture(AssetPath "animations/samurai/Attack_2.png");
+    CurrentGame.AnimationArray[SamuraiAttack3] = LoadTexture(AssetPath "animations/samurai/Attack_3.png");
+    CurrentGame.AnimationArray[SamuraiDead] = LoadTexture(AssetPath "animations/samurai/Dead.png");
+    CurrentGame.AnimationArray[SamuraiHurt] = LoadTexture(AssetPath "animations/samurai/Hurt.png");
+    CurrentGame.AnimationArray[SamuraiIdle] = LoadTexture(AssetPath "animations/samurai/Idle.png");
+    CurrentGame.AnimationArray[SamuraiJump] = LoadTexture(AssetPath "animations/samurai/Jump.png");
+    CurrentGame.AnimationArray[SamuraiRun] = LoadTexture(AssetPath "animations/samurai/Run.png");
+    CurrentGame.AnimationArray[SamuraiShield] = LoadTexture(AssetPath "animations/samurai/Shield.png");
+    CurrentGame.AnimationArray[SamuraiWalk] = LoadTexture(AssetPath "animations/samurai/Walk.png");
+    CurrentGame.AnimationArray[ShinobiAttack1] = LoadTexture(AssetPath "animations/shinobi/Attack_1.png");
+    CurrentGame.AnimationArray[ShinobiAttack2] = LoadTexture(AssetPath "animations/shinobi/Attack_2.png");
+    CurrentGame.AnimationArray[ShinobiAttack3] = LoadTexture(AssetPath "animations/shinobi/Attack_3.png");
+    CurrentGame.AnimationArray[ShinobiDead] = LoadTexture(AssetPath "animations/shinobi/Dead.png");
+    CurrentGame.AnimationArray[ShinobiHurt] = LoadTexture(AssetPath "animations/shinobi/Hurt.png");
+    CurrentGame.AnimationArray[ShinobiIdle] = LoadTexture(AssetPath "animations/shinobi/Idle.png");
+    CurrentGame.AnimationArray[ShinobiJump] = LoadTexture(AssetPath "animations/shinobi/Jump.png");
+    CurrentGame.AnimationArray[ShinobiRun] = LoadTexture(AssetPath "animations/shinobi/Run.png");
+    CurrentGame.AnimationArray[ShinobiShield] = LoadTexture(AssetPath "animations/shinobi/Shield.png");
+    CurrentGame.AnimationArray[ShinobiWalk] = LoadTexture(AssetPath "animations/shinobi/Walk.png");
 
     // Load Textures
-    TextureArray[BGFull] = LoadTexture(AssetPath "background/Background.png");
-    TextureArray[BGLayer1] = LoadTexture(AssetPath "background/layer1.png");
-    TextureArray[BGLayer2] = LoadTexture(AssetPath "background/layer2.png");
-    TextureArray[BGLayer3] = LoadTexture(AssetPath "background/layer3.png");
-    TextureArray[BGLayer4] = LoadTexture(AssetPath "background/layer4.png");
-    TextureArray[BGLayer5] = LoadTexture(AssetPath "background/layer5.png");
-    TextureArray[Box1] = LoadTexture(AssetPath "objects/boxes/1.png");
-    TextureArray[Box2] = LoadTexture(AssetPath "objects/boxes/2.png");
-    TextureArray[Box3] = LoadTexture(AssetPath "objects/boxes/3.png");
-    TextureArray[Box4] = LoadTexture(AssetPath "objects/boxes/4.png");
-    TextureArray[Box5] = LoadTexture(AssetPath "objects/boxes/5.png");
-    TextureArray[Box6] = LoadTexture(AssetPath "objects/boxes/6.png");
-    TextureArray[Bush1] = LoadTexture(AssetPath "objects/bushes/1.png");
-    TextureArray[Bush2] = LoadTexture(AssetPath "objects/bushes/2.png");
-    TextureArray[Bush3] = LoadTexture(AssetPath "objects/bushes/3.png");
-    TextureArray[Bush4] = LoadTexture(AssetPath "objects/bushes/4.png");
-    TextureArray[Bush5] = LoadTexture(AssetPath "objects/bushes/5.png");
-    TextureArray[Bush6] = LoadTexture(AssetPath "objects/bushes/6.png");
-    TextureArray[Bush7] = LoadTexture(AssetPath "objects/bushes/7.png");
-    TextureArray[Bush8] = LoadTexture(AssetPath "objects/bushes/8.png");
-    TextureArray[Bush9] = LoadTexture(AssetPath "objects/bushes/9.png");
-    TextureArray[Fence1] = LoadTexture(AssetPath "objects/fence/1.png");
-    TextureArray[Fence2] = LoadTexture(AssetPath "objects/fence/2.png");
-    TextureArray[Fence3] = LoadTexture(AssetPath "objects/fence/3.png");
-    TextureArray[Grass1] = LoadTexture(AssetPath "objects/grass/01.png");
-    TextureArray[Grass2] = LoadTexture(AssetPath "objects/grass/02.png");
-    TextureArray[Grass3] = LoadTexture(AssetPath "objects/grass/03.png");
-    TextureArray[Grass4] = LoadTexture(AssetPath "objects/grass/04.png");
-    TextureArray[Grass5] = LoadTexture(AssetPath "objects/grass/05.png");
-    TextureArray[Grass6] = LoadTexture(AssetPath "objects/grass/06.png");
-    TextureArray[Grass7] = LoadTexture(AssetPath "objects/grass/07.png");
-    TextureArray[Grass8] = LoadTexture(AssetPath "objects/grass/08.png");
-    TextureArray[Grass9] = LoadTexture(AssetPath "objects/grass/09.png");
-    TextureArray[Grass10] = LoadTexture(AssetPath "objects/grass/10.png");
-    TextureArray[Ladder1] = LoadTexture(AssetPath "objects/ladders/1.png");
-    TextureArray[Ladder2] = LoadTexture(AssetPath "objects/ladders/2.png");
-    TextureArray[Ladder3] = LoadTexture(AssetPath "objects/ladders/3.png");
-    TextureArray[Ladder4] = LoadTexture(AssetPath "objects/ladders/4.png");
-    TextureArray[Ladder5] = LoadTexture(AssetPath "objects/ladders/5.png");
-    TextureArray[Ladder6] = LoadTexture(AssetPath "objects/ladders/6.png");
-    TextureArray[Pointer1] = LoadTexture(AssetPath "objects/pointers/1.png");
-    TextureArray[Pointer2] = LoadTexture(AssetPath "objects/pointers/2.png");
-    TextureArray[Pointer3] = LoadTexture(AssetPath "objects/pointers/3.png");
-    TextureArray[Pointer4] = LoadTexture(AssetPath "objects/pointers/4.png");
-    TextureArray[Pointer5] = LoadTexture(AssetPath "objects/pointers/5.png");
-    TextureArray[Pointer6] = LoadTexture(AssetPath "objects/pointers/6.png");
-    TextureArray[Pointer7] = LoadTexture(AssetPath "objects/pointers/7.png");
-    TextureArray[Pointer8] = LoadTexture(AssetPath "objects/pointers/8.png");
-    TextureArray[Ridge1] = LoadTexture(AssetPath "objects/ridges/1.png");
-    TextureArray[Ridge2] = LoadTexture(AssetPath "objects/ridges/2.png");
-    TextureArray[Ridge3] = LoadTexture(AssetPath "objects/ridges/3.png");
-    TextureArray[Ridge4] = LoadTexture(AssetPath "objects/ridges/4.png");
-    TextureArray[Ridge5] = LoadTexture(AssetPath "objects/ridges/5.png");
-    TextureArray[Ridge6] = LoadTexture(AssetPath "objects/ridges/6.png");
-    TextureArray[Stone1] = LoadTexture(AssetPath "objects/stones/1.png");
-    TextureArray[Stone2] = LoadTexture(AssetPath "objects/stones/2.png");
-    TextureArray[Stone3] = LoadTexture(AssetPath "objects/stones/3.png");
-    TextureArray[Stone4] = LoadTexture(AssetPath "objects/stones/4.png");
-    TextureArray[Stone5] = LoadTexture(AssetPath "objects/stones/5.png");
-    TextureArray[Tree1] = LoadTexture(AssetPath "objects/trees/1.png");
-    TextureArray[Tree2] = LoadTexture(AssetPath "objects/trees/2.png");
-    TextureArray[Tree3] = LoadTexture(AssetPath "objects/trees/3.png");
-    TextureArray[Willow1] = LoadTexture(AssetPath "objects/willows/1.png");
-    TextureArray[Willow2] = LoadTexture(AssetPath "objects/willows/2.png");
-    TextureArray[Willow3] = LoadTexture(AssetPath "objects/willows/3.png");
-    TextureArray[Tile1] = LoadTexture(AssetPath "tiles/Tile_01.png");
-    TextureArray[Tile2] = LoadTexture(AssetPath "tiles/Tile_02.png");
-    TextureArray[Tile3] = LoadTexture(AssetPath "tiles/Tile_03.png");
-    TextureArray[Tile4] = LoadTexture(AssetPath "tiles/Tile_04.png");
-    TextureArray[Tile5] = LoadTexture(AssetPath "tiles/Tile_05.png");
-    TextureArray[Tile6] = LoadTexture(AssetPath "tiles/Tile_06.png");
-    TextureArray[Tile7] = LoadTexture(AssetPath "tiles/Tile_07.png");
-    TextureArray[Tile8] = LoadTexture(AssetPath "tiles/Tile_08.png");
-    TextureArray[Tile9] = LoadTexture(AssetPath "tiles/Tile_09.png");
-    TextureArray[Tile10] = LoadTexture(AssetPath "tiles/Tile_10.png");
-    TextureArray[Tile11] = LoadTexture(AssetPath "tiles/Tile_11.png");
-    TextureArray[Tile12] = LoadTexture(AssetPath "tiles/Tile_12.png");
-    TextureArray[Tile13] = LoadTexture(AssetPath "tiles/Tile_13.png");
-    TextureArray[Tile14] = LoadTexture(AssetPath "tiles/Tile_14.png");
-    TextureArray[Tile15] = LoadTexture(AssetPath "tiles/Tile_15.png");
-    TextureArray[Tile16] = LoadTexture(AssetPath "tiles/Tile_16.png");
-    TextureArray[Tile17] = LoadTexture(AssetPath "tiles/Tile_17.png");
-    TextureArray[Tile18] = LoadTexture(AssetPath "tiles/Tile_18.png");
-    TextureArray[Tile19] = LoadTexture(AssetPath "tiles/Tile_19.png");
-    TextureArray[Tile20] = LoadTexture(AssetPath "tiles/Tile_20.png");
-    TextureArray[Tile21] = LoadTexture(AssetPath "tiles/Tile_21.png");
-    TextureArray[Tile22] = LoadTexture(AssetPath "tiles/Tile_22.png");
-    TextureArray[Tile23] = LoadTexture(AssetPath "tiles/Tile_23.png");
-    TextureArray[Tile24] = LoadTexture(AssetPath "tiles/Tile_24.png");
-    TextureArray[Tile25] = LoadTexture(AssetPath "tiles/Tile_25.png");
-    TextureArray[Tile26] = LoadTexture(AssetPath "tiles/Tile_26.png");
-    TextureArray[Tile27] = LoadTexture(AssetPath "tiles/Tile_27.png");
-    TextureArray[Tile28] = LoadTexture(AssetPath "tiles/Tile_28.png");
-    TextureArray[Tile29] = LoadTexture(AssetPath "tiles/Tile_29.png");
-    TextureArray[Tile30] = LoadTexture(AssetPath "tiles/Tile_30.png");
-    TextureArray[Tile31] = LoadTexture(AssetPath "tiles/Tile_31.png");
-    TextureArray[Tile32] = LoadTexture(AssetPath "tiles/Tile_32.png");
-    TextureArray[Tile33] = LoadTexture(AssetPath "tiles/Tile_33.png");
-    TextureArray[Tile34] = LoadTexture(AssetPath "tiles/Tile_34.png");
-    TextureArray[Tile35] = LoadTexture(AssetPath "tiles/Tile_35.png");
-    TextureArray[Tile36] = LoadTexture(AssetPath "tiles/Tile_36.png");
-    TextureArray[Tile37] = LoadTexture(AssetPath "tiles/Tile_37.png");
-    TextureArray[Tile38] = LoadTexture(AssetPath "tiles/Tile_38.png");
-    TextureArray[Tile39] = LoadTexture(AssetPath "tiles/Tile_39.png");
-    TextureArray[Tile40] = LoadTexture(AssetPath "tiles/Tile_40.png");
-    TextureArray[Tile41] = LoadTexture(AssetPath "tiles/Tile_41.png");
-    TextureArray[Tile42] = LoadTexture(AssetPath "tiles/Tile_42.png");
-    TextureArray[Tile43] = LoadTexture(AssetPath "tiles/Tile_43.png");
-    TextureArray[Tile44] = LoadTexture(AssetPath "tiles/Tile_44.png");
-    TextureArray[Tile45] = LoadTexture(AssetPath "tiles/Tile_45.png");
-    TextureArray[Tile46] = LoadTexture(AssetPath "tiles/Tile_46.png");
-    TextureArray[Tile47] = LoadTexture(AssetPath "tiles/Tile_47.png");
-    TextureArray[Tile48] = LoadTexture(AssetPath "tiles/Tile_48.png");
-    TextureArray[Tile49] = LoadTexture(AssetPath "tiles/Tile_49.png");
-    TextureArray[Tile50] = LoadTexture(AssetPath "tiles/Tile_50.png");
-    TextureArray[Tile51] = LoadTexture(AssetPath "tiles/Tile_51.png");
-    TextureArray[Tile52] = LoadTexture(AssetPath "tiles/Tile_52.png");
-    TextureArray[Tile53] = LoadTexture(AssetPath "tiles/Tile_53.png");
-    TextureArray[Tile54] = LoadTexture(AssetPath "tiles/Tile_54.png");
-    TextureArray[Tile55] = LoadTexture(AssetPath "tiles/Tile_55.png");
-    TextureArray[Tile56] = LoadTexture(AssetPath "tiles/Tile_56.png");
-    TextureArray[Tile57] = LoadTexture(AssetPath "tiles/Tile_57.png");
-    TextureArray[Tile58] = LoadTexture(AssetPath "tiles/Tile_58.png");
-    TextureArray[Tile59] = LoadTexture(AssetPath "tiles/Tile_59.png");
-    TextureArray[Tile60] = LoadTexture(AssetPath "tiles/Tile_60.png");
+    CurrentGame.TextureArray[BGFull] = LoadTexture(AssetPath "background/Background.png");
+    CurrentGame.TextureArray[BGLayer1] = LoadTexture(AssetPath "background/layer1.png");
+    CurrentGame.TextureArray[BGLayer2] = LoadTexture(AssetPath "background/layer2.png");
+    CurrentGame.TextureArray[BGLayer3] = LoadTexture(AssetPath "background/layer3.png");
+    CurrentGame.TextureArray[BGLayer4] = LoadTexture(AssetPath "background/layer4.png");
+    CurrentGame.TextureArray[BGLayer5] = LoadTexture(AssetPath "background/layer5.png");
+    CurrentGame.TextureArray[Box1] = LoadTexture(AssetPath "objects/boxes/1.png");
+    CurrentGame.TextureArray[Box2] = LoadTexture(AssetPath "objects/boxes/2.png");
+    CurrentGame.TextureArray[Box3] = LoadTexture(AssetPath "objects/boxes/3.png");
+    CurrentGame.TextureArray[Box4] = LoadTexture(AssetPath "objects/boxes/4.png");
+    CurrentGame.TextureArray[Box5] = LoadTexture(AssetPath "objects/boxes/5.png");
+    CurrentGame.TextureArray[Box6] = LoadTexture(AssetPath "objects/boxes/6.png");
+    CurrentGame.TextureArray[Bush1] = LoadTexture(AssetPath "objects/bushes/1.png");
+    CurrentGame.TextureArray[Bush2] = LoadTexture(AssetPath "objects/bushes/2.png");
+    CurrentGame.TextureArray[Bush3] = LoadTexture(AssetPath "objects/bushes/3.png");
+    CurrentGame.TextureArray[Bush4] = LoadTexture(AssetPath "objects/bushes/4.png");
+    CurrentGame.TextureArray[Bush5] = LoadTexture(AssetPath "objects/bushes/5.png");
+    CurrentGame.TextureArray[Bush6] = LoadTexture(AssetPath "objects/bushes/6.png");
+    CurrentGame.TextureArray[Bush7] = LoadTexture(AssetPath "objects/bushes/7.png");
+    CurrentGame.TextureArray[Bush8] = LoadTexture(AssetPath "objects/bushes/8.png");
+    CurrentGame.TextureArray[Bush9] = LoadTexture(AssetPath "objects/bushes/9.png");
+    CurrentGame.TextureArray[Fence1] = LoadTexture(AssetPath "objects/fence/1.png");
+    CurrentGame.TextureArray[Fence2] = LoadTexture(AssetPath "objects/fence/2.png");
+    CurrentGame.TextureArray[Fence3] = LoadTexture(AssetPath "objects/fence/3.png");
+    CurrentGame.TextureArray[Grass1] = LoadTexture(AssetPath "objects/grass/01.png");
+    CurrentGame.TextureArray[Grass2] = LoadTexture(AssetPath "objects/grass/02.png");
+    CurrentGame.TextureArray[Grass3] = LoadTexture(AssetPath "objects/grass/03.png");
+    CurrentGame.TextureArray[Grass4] = LoadTexture(AssetPath "objects/grass/04.png");
+    CurrentGame.TextureArray[Grass5] = LoadTexture(AssetPath "objects/grass/05.png");
+    CurrentGame.TextureArray[Grass6] = LoadTexture(AssetPath "objects/grass/06.png");
+    CurrentGame.TextureArray[Grass7] = LoadTexture(AssetPath "objects/grass/07.png");
+    CurrentGame.TextureArray[Grass8] = LoadTexture(AssetPath "objects/grass/08.png");
+    CurrentGame.TextureArray[Grass9] = LoadTexture(AssetPath "objects/grass/09.png");
+    CurrentGame.TextureArray[Grass10] = LoadTexture(AssetPath "objects/grass/10.png");
+    CurrentGame.TextureArray[Ladder1] = LoadTexture(AssetPath "objects/ladders/1.png");
+    CurrentGame.TextureArray[Ladder2] = LoadTexture(AssetPath "objects/ladders/2.png");
+    CurrentGame.TextureArray[Ladder3] = LoadTexture(AssetPath "objects/ladders/3.png");
+    CurrentGame.TextureArray[Ladder4] = LoadTexture(AssetPath "objects/ladders/4.png");
+    CurrentGame.TextureArray[Ladder5] = LoadTexture(AssetPath "objects/ladders/5.png");
+    CurrentGame.TextureArray[Ladder6] = LoadTexture(AssetPath "objects/ladders/6.png");
+    CurrentGame.TextureArray[Pointer1] = LoadTexture(AssetPath "objects/pointers/1.png");
+    CurrentGame.TextureArray[Pointer2] = LoadTexture(AssetPath "objects/pointers/2.png");
+    CurrentGame.TextureArray[Pointer3] = LoadTexture(AssetPath "objects/pointers/3.png");
+    CurrentGame.TextureArray[Pointer4] = LoadTexture(AssetPath "objects/pointers/4.png");
+    CurrentGame.TextureArray[Pointer5] = LoadTexture(AssetPath "objects/pointers/5.png");
+    CurrentGame.TextureArray[Pointer6] = LoadTexture(AssetPath "objects/pointers/6.png");
+    CurrentGame.TextureArray[Pointer7] = LoadTexture(AssetPath "objects/pointers/7.png");
+    CurrentGame.TextureArray[Pointer8] = LoadTexture(AssetPath "objects/pointers/8.png");
+    CurrentGame.TextureArray[Ridge1] = LoadTexture(AssetPath "objects/ridges/1.png");
+    CurrentGame.TextureArray[Ridge2] = LoadTexture(AssetPath "objects/ridges/2.png");
+    CurrentGame.TextureArray[Ridge3] = LoadTexture(AssetPath "objects/ridges/3.png");
+    CurrentGame.TextureArray[Ridge4] = LoadTexture(AssetPath "objects/ridges/4.png");
+    CurrentGame.TextureArray[Ridge5] = LoadTexture(AssetPath "objects/ridges/5.png");
+    CurrentGame.TextureArray[Ridge6] = LoadTexture(AssetPath "objects/ridges/6.png");
+    CurrentGame.TextureArray[Stone1] = LoadTexture(AssetPath "objects/stones/1.png");
+    CurrentGame.TextureArray[Stone2] = LoadTexture(AssetPath "objects/stones/2.png");
+    CurrentGame.TextureArray[Stone3] = LoadTexture(AssetPath "objects/stones/3.png");
+    CurrentGame.TextureArray[Stone4] = LoadTexture(AssetPath "objects/stones/4.png");
+    CurrentGame.TextureArray[Stone5] = LoadTexture(AssetPath "objects/stones/5.png");
+    CurrentGame.TextureArray[Tree1] = LoadTexture(AssetPath "objects/trees/1.png");
+    CurrentGame.TextureArray[Tree2] = LoadTexture(AssetPath "objects/trees/2.png");
+    CurrentGame.TextureArray[Tree3] = LoadTexture(AssetPath "objects/trees/3.png");
+    CurrentGame.TextureArray[Willow1] = LoadTexture(AssetPath "objects/willows/1.png");
+    CurrentGame.TextureArray[Willow2] = LoadTexture(AssetPath "objects/willows/2.png");
+    CurrentGame.TextureArray[Willow3] = LoadTexture(AssetPath "objects/willows/3.png");
+    CurrentGame.TextureArray[Tile1] = LoadTexture(AssetPath "tiles/Tile_01.png");
+    CurrentGame.TextureArray[Tile2] = LoadTexture(AssetPath "tiles/Tile_02.png");
+    CurrentGame.TextureArray[Tile3] = LoadTexture(AssetPath "tiles/Tile_03.png");
+    CurrentGame.TextureArray[Tile4] = LoadTexture(AssetPath "tiles/Tile_04.png");
+    CurrentGame.TextureArray[Tile5] = LoadTexture(AssetPath "tiles/Tile_05.png");
+    CurrentGame.TextureArray[Tile6] = LoadTexture(AssetPath "tiles/Tile_06.png");
+    CurrentGame.TextureArray[Tile7] = LoadTexture(AssetPath "tiles/Tile_07.png");
+    CurrentGame.TextureArray[Tile8] = LoadTexture(AssetPath "tiles/Tile_08.png");
+    CurrentGame.TextureArray[Tile9] = LoadTexture(AssetPath "tiles/Tile_09.png");
+    CurrentGame.TextureArray[Tile10] = LoadTexture(AssetPath "tiles/Tile_10.png");
+    CurrentGame.TextureArray[Tile11] = LoadTexture(AssetPath "tiles/Tile_11.png");
+    CurrentGame.TextureArray[Tile12] = LoadTexture(AssetPath "tiles/Tile_12.png");
+    CurrentGame.TextureArray[Tile13] = LoadTexture(AssetPath "tiles/Tile_13.png");
+    CurrentGame.TextureArray[Tile14] = LoadTexture(AssetPath "tiles/Tile_14.png");
+    CurrentGame.TextureArray[Tile15] = LoadTexture(AssetPath "tiles/Tile_15.png");
+    CurrentGame.TextureArray[Tile16] = LoadTexture(AssetPath "tiles/Tile_16.png");
+    CurrentGame.TextureArray[Tile17] = LoadTexture(AssetPath "tiles/Tile_17.png");
+    CurrentGame.TextureArray[Tile18] = LoadTexture(AssetPath "tiles/Tile_18.png");
+    CurrentGame.TextureArray[Tile19] = LoadTexture(AssetPath "tiles/Tile_19.png");
+    CurrentGame.TextureArray[Tile20] = LoadTexture(AssetPath "tiles/Tile_20.png");
+    CurrentGame.TextureArray[Tile21] = LoadTexture(AssetPath "tiles/Tile_21.png");
+    CurrentGame.TextureArray[Tile22] = LoadTexture(AssetPath "tiles/Tile_22.png");
+    CurrentGame.TextureArray[Tile23] = LoadTexture(AssetPath "tiles/Tile_23.png");
+    CurrentGame.TextureArray[Tile24] = LoadTexture(AssetPath "tiles/Tile_24.png");
+    CurrentGame.TextureArray[Tile25] = LoadTexture(AssetPath "tiles/Tile_25.png");
+    CurrentGame.TextureArray[Tile26] = LoadTexture(AssetPath "tiles/Tile_26.png");
+    CurrentGame.TextureArray[Tile27] = LoadTexture(AssetPath "tiles/Tile_27.png");
+    CurrentGame.TextureArray[Tile28] = LoadTexture(AssetPath "tiles/Tile_28.png");
+    CurrentGame.TextureArray[Tile29] = LoadTexture(AssetPath "tiles/Tile_29.png");
+    CurrentGame.TextureArray[Tile30] = LoadTexture(AssetPath "tiles/Tile_30.png");
+    CurrentGame.TextureArray[Tile31] = LoadTexture(AssetPath "tiles/Tile_31.png");
+    CurrentGame.TextureArray[Tile32] = LoadTexture(AssetPath "tiles/Tile_32.png");
+    CurrentGame.TextureArray[Tile33] = LoadTexture(AssetPath "tiles/Tile_33.png");
+    CurrentGame.TextureArray[Tile34] = LoadTexture(AssetPath "tiles/Tile_34.png");
+    CurrentGame.TextureArray[Tile35] = LoadTexture(AssetPath "tiles/Tile_35.png");
+    CurrentGame.TextureArray[Tile36] = LoadTexture(AssetPath "tiles/Tile_36.png");
+    CurrentGame.TextureArray[Tile37] = LoadTexture(AssetPath "tiles/Tile_37.png");
+    CurrentGame.TextureArray[Tile38] = LoadTexture(AssetPath "tiles/Tile_38.png");
+    CurrentGame.TextureArray[Tile39] = LoadTexture(AssetPath "tiles/Tile_39.png");
+    CurrentGame.TextureArray[Tile40] = LoadTexture(AssetPath "tiles/Tile_40.png");
+    CurrentGame.TextureArray[Tile41] = LoadTexture(AssetPath "tiles/Tile_41.png");
+    CurrentGame.TextureArray[Tile42] = LoadTexture(AssetPath "tiles/Tile_42.png");
+    CurrentGame.TextureArray[Tile43] = LoadTexture(AssetPath "tiles/Tile_43.png");
+    CurrentGame.TextureArray[Tile44] = LoadTexture(AssetPath "tiles/Tile_44.png");
+    CurrentGame.TextureArray[Tile45] = LoadTexture(AssetPath "tiles/Tile_45.png");
+    CurrentGame.TextureArray[Tile46] = LoadTexture(AssetPath "tiles/Tile_46.png");
+    CurrentGame.TextureArray[Tile47] = LoadTexture(AssetPath "tiles/Tile_47.png");
+    CurrentGame.TextureArray[Tile48] = LoadTexture(AssetPath "tiles/Tile_48.png");
+    CurrentGame.TextureArray[Tile49] = LoadTexture(AssetPath "tiles/Tile_49.png");
+    CurrentGame.TextureArray[Tile50] = LoadTexture(AssetPath "tiles/Tile_50.png");
+    CurrentGame.TextureArray[Tile51] = LoadTexture(AssetPath "tiles/Tile_51.png");
+    CurrentGame.TextureArray[Tile52] = LoadTexture(AssetPath "tiles/Tile_52.png");
+    CurrentGame.TextureArray[Tile53] = LoadTexture(AssetPath "tiles/Tile_53.png");
+    CurrentGame.TextureArray[Tile54] = LoadTexture(AssetPath "tiles/Tile_54.png");
+    CurrentGame.TextureArray[Tile55] = LoadTexture(AssetPath "tiles/Tile_55.png");
+    CurrentGame.TextureArray[Tile56] = LoadTexture(AssetPath "tiles/Tile_56.png");
+    CurrentGame.TextureArray[Tile57] = LoadTexture(AssetPath "tiles/Tile_57.png");
+    CurrentGame.TextureArray[Tile58] = LoadTexture(AssetPath "tiles/Tile_58.png");
+    CurrentGame.TextureArray[Tile59] = LoadTexture(AssetPath "tiles/Tile_59.png");
+    CurrentGame.TextureArray[Tile60] = LoadTexture(AssetPath "tiles/Tile_60.png");
 }

@@ -14,7 +14,9 @@ int main(void)
 
     while (!WindowShouldClose())
     {
-        GameLoop();
+        GetUserInput();
+        Update();
+        Render();
     }
 
     CloseWindow();

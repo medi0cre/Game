@@ -49,7 +49,7 @@ void* ArenaAlloc(Arena* _Arena_, size_t Size, size_t Alignment)
         return NULL;
     }
 
-    unsigned char* AlignedMemory = (unsigned char*) (((uint64_t)_Arena_->Current + Alignment - 1) & ~(Alignment - 1));
+    unsigned char* AlignedMemory = (unsigned char*) (((uintptr_t)_Arena_->Current + Alignment - 1) & ~(Alignment - 1));
     if (AlignedMemory > _Arena_->Start + _Arena_->Size - Size)
     {
         fprintf(stderr, "Arena out of memory\n");
