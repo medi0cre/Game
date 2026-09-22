@@ -10,27 +10,29 @@ Game CurrentGame = { 0 };
 
 void Update(void)
 {
+    World* W = &CurrentGame.GameWorld;
+
     uint16_t LastGravity = 0;
     uint16_t LastMovement = 0;
     uint16_t LastSpatial = 0;
     uint16_t LastCollisionBox = 0;
 
     // Declare these in the World struct since they are needed for rendering
-    CurrentGame.GameWorld.LastAnimation = 0;
-    CurrentGame.GameWorld.LastTexture = 0;
+    W->LastAnimation = 0;
+    W->LastTexture = 0;
 
     for (uint16_t i = 0; i < MaxEntityCount; i++)
     {
-        if (!CurrentGame.GameWorld.Actives[i]) { continue; }
-        uint64_t Component = CurrentGame.GameWorld.Components[i];
+        if (!W->Actives[i]) { continue; }
+        uint64_t Component = W->Components[i];
         Enforce(Component != 0, "Useless entity");
 
-        if (Component & CSpatial) { CurrentGame.GameWorld.TempSpatialArray[LastSpatial++] = i; }
-        if (Component & CCollisionBox) { CurrentGame.GameWorld.TempCollisionBoxArray[LastCollisionBox++] = i; }
-        if (Component & CMovement) { CurrentGame.GameWorld.TempMovementArray[LastMovement++] = i; }
-        if (Component & CGravity) { CurrentGame.GameWorld.TempGravityArray[LastGravity++] = i; }
-        if (Component & CAnimation) { CurrentGame.GameWorld.TempAnimationArray[CurrentGame.GameWorld.LastAnimation++] = i; }
-        if (Component & CTexture) { CurrentGame.GameWorld.TempTextureArray[CurrentGame.GameWorld.LastTexture++] = i; }
+        if (Component & CSpatial) { W->TempSpatialArray[LastSpatial++] = i; }
+        if (Component & CCollisionBox) { W->TempCollisionBoxArray[LastCollisionBox++] = i; }
+        if (Component & CMovement) { W->TempMovementArray[LastMovement++] = i; }
+        if (Component & CGravity) { W->TempGravityArray[LastGravity++] = i; }
+        if (Component & CAnimation) { W->TempAnimationArray[W->LastAnimation++] = i; }
+        if (Component & CTexture) { W->TempTextureArray[W->LastTexture++] = i; }
     }
 
     S_Gravity(LastGravity);
@@ -43,38 +45,40 @@ void Update(void)
 
 void Render(void)
 {
+    World* W = &CurrentGame.GameWorld;
+
     BeginDrawing();
     ClearBackground(BLACK);
 
-    for (uint16_t i = 0; i < CurrentGame.GameWorld.LastTexture; i++)
+    for (uint16_t i = 0; i < W->LastTexture; i++)
     {
-        uint16_t ID = CurrentGame.GameWorld.TempTextureArray[i];
-        Enforce(ID < MaxEntityCount && CurrentGame.GameWorld.Textures[ID] < TextureCount, "Invalid texture");
-        DrawTextureEx(CurrentGame.TextureArray[CurrentGame.GameWorld.Textures[ID]],
-            CurrentGame.GameWorld.Spatials[ID].Position, 0.0f, CurrentGame.GameWorld.Spatials[ID].Scale, WHITE);
+        uint16_t ID = W->TempTextureArray[i];
+        Enforce(ID < MaxEntityCount && W->Textures[ID] < TextureCount, "Invalid texture");
+        DrawTextureEx(CurrentGame.TextureArray[W->Textures[ID]],
+            W->Spatials[ID].Position, 0.0f, W->Spatials[ID].Scale, WHITE);
     }
 
-    for (uint16_t i = 0; i < CurrentGame.GameWorld.LastAnimation; i++)
+    for (uint16_t i = 0; i < W->LastAnimation; i++)
     {
-        uint16_t ID = CurrentGame.GameWorld.TempAnimationArray[i];
+        uint16_t ID = W->TempAnimationArray[i];
         Enforce(ID < MaxEntityCount, "Invalid animation");
         Enforce(ID == CurrentGame.PlayerID, "Not a player, need to handle Source.width differently now, remove later");
 
-        Animation A = CurrentGame.GameWorld.Animations[ID];
+        Animation A = W->Animations[ID];
         uint16_t FrameWidth = CurrentGame.AnimationArray[A.AnimationID].width / A.FramesInAnimation;
 
         Rectangle Source = {
             .x = FrameWidth * A.CurrentFrameInAnimation,
             .y = 0.0f,
-            .width = CurrentGame.GameWorld.Movements[ID].Direction.x * FrameWidth,
+            .width = W->Movements[ID].Direction.x * FrameWidth,
             .height = CurrentGame.AnimationArray[A.AnimationID].height
         };
 
         Rectangle Destination = {
-            .x = CurrentGame.GameWorld.Spatials[ID].Position.x,
-            .y = CurrentGame.GameWorld.Spatials[ID].Position.y,
-            .width = Source.width * CurrentGame.GameWorld.Spatials[ID].Scale,
-            .height = Source.height * CurrentGame.GameWorld.Spatials[ID].Scale
+            .x = W->Spatials[ID].Position.x,
+            .y = W->Spatials[ID].Position.y,
+            .width = Source.width * W->Spatials[ID].Scale,
+            .height = Source.height * W->Spatials[ID].Scale
         };
 
         DrawTexturePro(CurrentGame.AnimationArray[A.AnimationID], Source, Destination, (Vector2) { 0.0f, 0.0f }, 0.0f, WHITE);
@@ -91,6 +95,8 @@ void LoadLevel(const char* File)
     ArenaSnapshot(&CurrentGame.GameArena);
     char* Line = ArenaAlloc(&CurrentGame.GameArena, MaxLineSize, _Alignof(char));
     Enforce(Line, "Failed to allocate line buffer");
+
+    World* W = &CurrentGame.GameWorld;
 
     while (fgets(Line, MaxLineSize, Level) != NULL)
     {
@@ -126,10 +132,10 @@ void LoadLevel(const char* File)
                 uint16_t Dec = CreateEntity();
                 Enforce(Dec < MaxEntityCount, "Failed to create entity");
 
-                CurrentGame.GameWorld.Components[Dec] = CSpatial | CTexture;
-                CurrentGame.GameWorld.Spatials[Dec].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
-                CurrentGame.GameWorld.Spatials[Dec].Scale = (float)ScaleNumerator / (float)ScaleDenominator;
-                CurrentGame.GameWorld.Textures[Dec] = (uint16_t)TextureID;
+                W->Components[Dec] = CSpatial | CTexture;
+                W->Spatials[Dec].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
+                W->Spatials[Dec].Scale = (float)ScaleNumerator / (float)ScaleDenominator;
+                W->Textures[Dec] = (uint16_t)TextureID;
 
                 break;
             }
@@ -154,11 +160,11 @@ void LoadLevel(const char* File)
                 uint16_t Tile = CreateEntity();
                 Enforce(Tile < MaxEntityCount, "Failed to create entity");
 
-                CurrentGame.GameWorld.Components[Tile] = CSpatial | CTexture | CCollisionBox;
-                CurrentGame.GameWorld.Spatials[Tile].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
-                CurrentGame.GameWorld.Spatials[Tile].Scale = (float)ScaleNumerator / (float)ScaleDenominator;
-                CurrentGame.GameWorld.Textures[Tile] = (uint16_t)TextureID;
-                CurrentGame.GameWorld.CollisionBoxes[Tile] = (CollisionBox) { .Width = CollisionBoxX, .Height = CollisionBoxY };
+                W->Components[Tile] = CSpatial | CTexture | CCollisionBox;
+                W->Spatials[Tile].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
+                W->Spatials[Tile].Scale = (float)ScaleNumerator / (float)ScaleDenominator;
+                W->Textures[Tile] = (uint16_t)TextureID;
+                W->CollisionBoxes[Tile] = (CollisionBox) { .Width = CollisionBoxX, .Height = CollisionBoxY };
 
                 break;
             }
@@ -185,24 +191,25 @@ void LoadLevel(const char* File)
                 Enforce(ID < MaxEntityCount, "Failed to create player");
                 CurrentGame.PlayerID = ID;
 
-                CurrentGame.GameWorld.Components[ID] = CSpatial | CMovement | CGravity | CAnimation | CCollisionBox;
-                CurrentGame.GameWorld.Spatials[ID].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
-                CurrentGame.GameWorld.Spatials[ID].Scale = (float)Scale;
-                CurrentGame.GameWorld.CollisionBoxes[ID] = (CollisionBox) { .Width = CollisionBoxX, .Height = CollisionBoxY };
+                W->Components[ID] = CSpatial | CMovement | CGravity | CAnimation | CCollisionBox;
+                W->Spatials[ID].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
+                W->Spatials[ID].Scale = (float)Scale;
+                W->CollisionBoxes[ID] = (CollisionBox) { .Width = CollisionBoxX, .Height = CollisionBoxY };
 
-                CurrentGame.GameWorld.Movements[ID] = (Movement) {
+                W->Movements[ID] = (Movement) {
                     .Magnitude = { 0.0f, 0.0f },
-                    .Direction = { 1.0f, 1.0f }
+                    .Direction = { 1.0f, 1.0f },
+                    .PreviousPosition = { (float)PositionX, (float)PositionY }
                 };
 
-                CurrentGame.GameWorld.Gravities[ID] = (Gravity) {
+                W->Gravities[ID] = (Gravity) {
                     .Acceleration = (float)Acceleration * 0.50f,
                     .MaxVelocity = (float)MaxVelocity,
                     .Jump = (float)Jump,
                     .Grounded = false
                 };
 
-                CurrentGame.GameWorld.Animations[ID] = (Animation) {
+                W->Animations[ID] = (Animation) {
                     .AnimationID = SamuraiIdle,
                     .CurrentFrameInAnimation = 0,
                     .FramesInAnimation = FrameCountSamuraiIdle,
@@ -228,35 +235,36 @@ void GameInit(void)
 {
     CurrentGame.GameFrame = 0;
     CurrentGame.PlayerID = UINT16_MAX;
+    World* W = &CurrentGame.GameWorld;
 
     LoadAssets();
 
     Enforce(ArenaInit(&CurrentGame.GameArena, ArenaSize), "Failed to initialize arena");
 
-    CurrentGame.GameWorld.Components = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint64_t), _Alignof(uint64_t));
-    CurrentGame.GameWorld.Actives = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(bool), _Alignof(bool));
-    CurrentGame.GameWorld.Spatials = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(Spatial), _Alignof(Spatial));
-    CurrentGame.GameWorld.Movements = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(Movement), _Alignof(Movement));
-    CurrentGame.GameWorld.Gravities = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(Gravity), _Alignof(Gravity));
-    CurrentGame.GameWorld.Textures = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
-    CurrentGame.GameWorld.Animations = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(Animation), _Alignof(Animation));
-    CurrentGame.GameWorld.CollisionBoxes = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(CollisionBox), _Alignof(CollisionBox));
+    W->Components = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint64_t), _Alignof(uint64_t));
+    W->Actives = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(bool), _Alignof(bool));
+    W->Spatials = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(Spatial), _Alignof(Spatial));
+    W->Movements = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(Movement), _Alignof(Movement));
+    W->Gravities = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(Gravity), _Alignof(Gravity));
+    W->Textures = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    W->Animations = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(Animation), _Alignof(Animation));
+    W->CollisionBoxes = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(CollisionBox), _Alignof(CollisionBox));
 
-    CurrentGame.GameWorld.TempSpatialArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
-    CurrentGame.GameWorld.TempMovementArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
-    CurrentGame.GameWorld.TempGravityArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
-    CurrentGame.GameWorld.TempTextureArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
-    CurrentGame.GameWorld.TempAnimationArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
-    CurrentGame.GameWorld.TempCollisionBoxArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    W->TempSpatialArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    W->TempMovementArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    W->TempGravityArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    W->TempTextureArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    W->TempAnimationArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    W->TempCollisionBoxArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
 
-    Enforce(CurrentGame.GameWorld.Components && CurrentGame.GameWorld.Actives
-        && CurrentGame.GameWorld.Spatials && CurrentGame.GameWorld.Movements
-        && CurrentGame.GameWorld.Gravities && CurrentGame.GameWorld.Textures
-        && CurrentGame.GameWorld.Animations && CurrentGame.GameWorld.CollisionBoxes
+    Enforce(W->Components && W->Actives
+        && W->Spatials && W->Movements
+        && W->Gravities && W->Textures
+        && W->Animations && W->CollisionBoxes
 
-        && CurrentGame.GameWorld.TempSpatialArray && CurrentGame.GameWorld.TempMovementArray
-        && CurrentGame.GameWorld.TempGravityArray && CurrentGame.GameWorld.TempTextureArray
-        && CurrentGame.GameWorld.TempAnimationArray && CurrentGame.GameWorld.TempCollisionBoxArray
+        && W->TempSpatialArray && W->TempMovementArray
+        && W->TempGravityArray && W->TempTextureArray
+        && W->TempAnimationArray && W->TempCollisionBoxArray
         , "Failed to initialize component arrays");
 }
 

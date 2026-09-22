@@ -96,4 +96,5 @@ typedef struct {
 typedef struct {
     Vector2 Magnitude;
     Vector2 Direction;
+    Vector2 PreviousPosition;
 } Movement;

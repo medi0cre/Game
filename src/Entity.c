@@ -4,12 +4,14 @@
 
 uint16_t CreateEntity(void)
 {
+    World* W = &CurrentGame.GameWorld;
+
     for (uint16_t i = 0; i < MaxEntityCount; i++)
     {
-        if (!CurrentGame.GameWorld.Actives[i])
+        if (!W->Actives[i])
         {
-            CurrentGame.GameWorld.Actives[i] = true;
-            CurrentGame.GameWorld.Components[i] = 0;
+            W->Actives[i] = true;
+            W->Components[i] = 0;
             return i;
         }
     }
@@ -19,7 +21,8 @@ uint16_t CreateEntity(void)
 
 void DestroyEntity(uint16_t Entity)
 {
-    Enforce(Entity < MaxEntityCount && CurrentGame.GameWorld.Actives[Entity], "DestroyEntity() error");
-    CurrentGame.GameWorld.Actives[Entity] = false;
-    CurrentGame.GameWorld.Components[Entity] = 0;
+    World* W = &CurrentGame.GameWorld;
+    Enforce(Entity < MaxEntityCount && W->Actives[Entity], "DestroyEntity() error");
+    W->Actives[Entity] = false;
+    W->Components[Entity] = 0;
 }
