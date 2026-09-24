@@ -4,28 +4,6 @@
 #include <Component.h>
 #include <math.h>
 
-#define DF0 0
-#define DF1 0
-#define DF2 0
-#define DF3 0
-#define DF4 0
-#define DF5 0
-#define DF6 0
-#define DF7 0
-#define DF8 0
-#define DF9 0
-#define DF10 0
-#define DF11 0
-#define DF12 0
-#define DF13 0
-#define DF14 0
-#define DF15 0
-#define DF16 0
-#define DF17 0
-#define DF18 0
-#define DF19 1
-#define DF20 0
-
 void S_Gravity(uint16_t LastGravity)
 {
     Enforce(LastGravity < MaxEntityCount, "Precondition broken inside S_Gravity()");
@@ -60,8 +38,6 @@ void S_Animation(void)
         && W->LastAnimation < MaxEntityCount
         , "Precondition broken inside S_Animation()");
 
-    if (DF0) { printf("State before switch = %d\n", CurrentGame.GamePlayer.State); }
-
     switch (CurrentGame.GamePlayer.State)
     {
         case PlayerStateIdle:
@@ -92,11 +68,8 @@ void S_Animation(void)
         }
     }
 
-    if (DF1) { printf("State after switch = %d\n", CurrentGame.GamePlayer.State); }
-
     if (CurrentGame.GamePlayer.Mask & ChangedState)
     {
-        if (DF2) { printf("State change detected\n"); }
         W->Animations[PID].CurrentFrameInAnimation = 0;
         CurrentGame.GamePlayer.Mask &= ~ChangedState;
     }
@@ -152,15 +125,11 @@ void S_Collision(uint16_t LastCollisionBox)
         Enforce(Overlap.height != Overlap.width, "Same collision dimensions cannot be resolved, HAAALP!!");
         // This triggered once, need to solve this later
 
-        if (DF3) { printf("Collision between entity %d and player\n", ID); }
-
         if (Overlap.width > Overlap.height) // Vertical Collision
         {
-            if (DF4) { printf("Vertical collision\n"); }
             // Player hits tile from below
             if (W->Spatials[PID].Position.y < W->Movements[PID].PreviousPosition.y)
             {
-                if (DF5) { printf("Player hit tile from below\n"); }
                 W->Spatials[PID].Position.y += Overlap.height;
                 W->Movements[PID].Magnitude.y = 0.0f;
                 W->Movements[PID].Direction.y = 1.0f;
@@ -169,7 +138,6 @@ void S_Collision(uint16_t LastCollisionBox)
             // Player hits tile from above
             else if (W->Spatials[PID].Position.y > W->Movements[PID].PreviousPosition.y)
             {
-                if (DF6) { printf("Player hit tile from above and is standing\n"); }
                 W->Spatials[PID].Position.y -= Overlap.height;
                 W->Movements[PID].Magnitude.y = 0.0f;
                 W->Movements[PID].Direction.y = 1.0f;
@@ -179,11 +147,9 @@ void S_Collision(uint16_t LastCollisionBox)
         }
         else if (Overlap.width < Overlap.height) // Horizontal Collision
         {
-            if (DF7) { printf("Horizontal collision\n"); }
             // Player hits tile from the right
             if (W->Spatials[PID].Position.x < W->Movements[PID].PreviousPosition.x)
             {
-                if (DF8) { printf("Player hits tile from the right\n"); }
                 W->Spatials[PID].Position.x += Overlap.width;
                 W->Movements[PID].Magnitude.x = 0.0f;
             }
@@ -191,7 +157,6 @@ void S_Collision(uint16_t LastCollisionBox)
             // Player hits tile from the left
             else if (W->Spatials[PID].Position.x > W->Movements[PID].PreviousPosition.x)
             {
-                if (DF9) { printf("Player hits tile from the left\n"); }
                 W->Spatials[PID].Position.x -= Overlap.width;
                 W->Movements[PID].Magnitude.x = 0.0f;
             }
@@ -201,18 +166,8 @@ void S_Collision(uint16_t LastCollisionBox)
     if (!(CurrentGame.GamePlayer.Mask & IsStanding)
         && CurrentGame.GamePlayer.State != PlayerStateJumping)
     {
-        if (DF10)
-        {
-            printf("State changed from %d to jumping\n", CurrentGame.GamePlayer.State);
-        }
         CurrentGame.GamePlayer.Mask |= ChangedState;
         CurrentGame.GamePlayer.State = PlayerStateJumping;
-    }
-
-    if (DF11)
-    {
-        if (CurrentGame.GamePlayer.State == PlayerStateJumping) { printf("Player is jumping\n"); }
-        else { printf("Player is not jumping\n"); }
     }
 }
 
@@ -229,64 +184,55 @@ void S_Movement(void)
         W->Movements[PID].Magnitude.x = CurrentGame.GamePlayer.Speed;
         W->Movements[PID].Direction.x = 1.0f;
 
-        if (DF12) { printf("Player is trying to move right\n"); }
-
         if (CurrentGame.GamePlayer.State != PlayerStateRunning && (CurrentGame.GamePlayer.Mask & IsStanding))
         {
-            if (DF13) { printf("Player is changed state to running\n"); }
             CurrentGame.GamePlayer.Mask |= ChangedState;
             CurrentGame.GamePlayer.State = PlayerStateRunning;
         }
     }
     else if (!UserInput.Right && UserInput.Left)
     {
-
-        if (DF14) { printf("Player is trying to move left\n"); }
         W->Movements[PID].Magnitude.x = CurrentGame.GamePlayer.Speed;;
         W->Movements[PID].Direction.x = -1.0f;
 
         if (CurrentGame.GamePlayer.State != PlayerStateRunning && (CurrentGame.GamePlayer.Mask & IsStanding))
         {
 
-            if (DF15) { printf("Player is changed state to running\n"); }
             CurrentGame.GamePlayer.Mask |= ChangedState;
             CurrentGame.GamePlayer.State = PlayerStateRunning;
         }
     }
     else
     {
-
-        if (DF16) { printf("Player is not moving left or right\n"); }
         W->Movements[PID].Magnitude.x = 0.0f;
 
         if (CurrentGame.GamePlayer.State != PlayerStateIdle && (CurrentGame.GamePlayer.Mask & IsStanding))
         {
-            if (DF17) { printf("Player changed state to idle\n"); }
             CurrentGame.GamePlayer.Mask |= ChangedState;
             CurrentGame.GamePlayer.State = PlayerStateIdle;
         }
     }
 
-    if (UserInput.Up && (CurrentGame.GamePlayer.Mask & IsStanding))
+    if (UserInput.Up && (CurrentGame.GamePlayer.Mask & IsStanding) && (CurrentGame.GamePlayer.Mask & CanJump))
     {
-
-        if (DF18) { printf("Player started jumping\n"); }
         float Velocity = W->Movements[PID].Magnitude.y * W->Movements[PID].Direction.y;
         Velocity = -CurrentGame.GamePlayer.Jump;
         Velocity = fmaxf(Velocity, -W->Gravities[PID].MaxVelocity);
 
         W->Movements[PID].Magnitude.y = fabsf(Velocity);
         W->Movements[PID].Direction.y = Velocity >= 0.0f ? 1.0f : -1.0f;
+        CurrentGame.GamePlayer.Mask &= ~CanJump;
     }
 
     if (!UserInput.Up && !(CurrentGame.GamePlayer.Mask & IsStanding)
         && W->Movements[PID].Magnitude.y
         * W->Movements[PID].Direction.y < 0.0f)
     {
-        if (DF19) { printf("Player let go of jumping\n"); }
         W->Movements[PID].Magnitude.y = 0.0f;
         W->Movements[PID].Direction.y = 1.0f;
     }
+
+    if ((CurrentGame.GamePlayer.Mask & IsStanding) && !UserInput.Up) { CurrentGame.GamePlayer.Mask |= CanJump; }
 
     W->Movements[PID].PreviousPosition = W->Spatials[PID].Position;
     W->Spatials[PID].Position.y += W->Movements[PID].Magnitude.y * W->Movements[PID].Direction.y;
