@@ -89,8 +89,6 @@ typedef struct {
 typedef struct {
     float Acceleration;
     float MaxVelocity;
-    float Jump;
-    bool Grounded;
 } Gravity;
 
 typedef struct {

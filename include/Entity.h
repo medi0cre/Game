@@ -3,9 +3,9 @@
 #include <stdbool.h>
 
 typedef enum {
-    Player = 0,
-    Tile = 1,
-    Decoration = 2,
+    Tile = 0,
+    Decoration = 1,
+    Enemy = 2
 } EntityType;
 
 uint16_t CreateEntity(void);

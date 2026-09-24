@@ -224,7 +224,7 @@ typedef enum {
     FrameDurationSamuraiDead = 20,
     FrameDurationSamuraiHurt = 20,
     FrameDurationSamuraiIdle = 10,
-    FrameDurationSamuraiJump = 10,
+    FrameDurationSamuraiJump = 5,
     FrameDurationSamuraiRun = 3,
     FrameDurationSamuraiShield = 4,
     FrameDurationSamuraiWalk = 5,

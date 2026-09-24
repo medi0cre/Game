@@ -62,7 +62,7 @@ void Render(void)
     {
         uint16_t ID = W->TempAnimationArray[i];
         Enforce(ID < MaxEntityCount, "Invalid animation");
-        Enforce(ID == CurrentGame.PlayerID, "Not a player, need to handle Source.width differently now, remove later");
+        Enforce(ID == CurrentGame.GamePlayer.ID, "Not a player, need to handle Source.width differently now, remove later");
 
         Animation A = W->Animations[ID];
         uint16_t FrameWidth = CurrentGame.AnimationArray[A.AnimationID].width / A.FramesInAnimation;
@@ -98,6 +98,45 @@ void LoadLevel(const char* File)
 
     World* W = &CurrentGame.GameWorld;
 
+    // Initialize Player First
+    uint16_t PID = CreateEntity();
+    Enforce(PID == 0, "Player should always be loaded first");
+
+    CurrentGame.GamePlayer = (Player) {
+        .Character = Samurai,
+        .ID = PID,
+        .Jump = 16,
+        .Mask = 0,
+        .Speed = 8,
+        .State = PlayerStateIdle,
+        .UserInput = { 0 }
+    };
+
+    W->Components[PID] = CSpatial | CMovement | CGravity | CAnimation | CCollisionBox;
+    W->Spatials[PID].Position = (Vector2) { .x = 200.0f, .y = 200.0f };
+    W->Spatials[PID].Scale = 1.0f;
+    W->CollisionBoxes[PID] = (CollisionBox) { .Width = 128.0f, .Height = 128.0f };
+
+    W->Movements[PID] = (Movement) {
+        .Magnitude = { 0.0f, 0.0f },
+        .Direction = { 1.0f, 1.0f },
+        .PreviousPosition = { 200.0f, 200.0f }
+    };
+
+    W->Gravities[PID] = (Gravity) {
+        .Acceleration = 0.5f,
+        .MaxVelocity = 20.0f
+    };
+
+    W->Animations[PID] = (Animation) {
+        .AnimationID = SamuraiIdle,
+        .CurrentFrameInAnimation = 0,
+        .FramesInAnimation = FrameCountSamuraiIdle,
+        .FramesPassed = 0,
+        .Duration = FrameDurationSamuraiIdle
+    };
+
+    // Read from file and load other entities
     while (fgets(Line, MaxLineSize, Level) != NULL)
     {
         // Skip whitespaces, ignore comments and read until null terminator
@@ -168,55 +207,10 @@ void LoadLevel(const char* File)
 
                 break;
             }
-            case Player:
+            case Enemy:
             {
-                int PositionX, PositionY, Scale, MaxVelocity, Jump, Acceleration, CollisionBoxX, CollisionBoxY;
-
-                if (sscanf(Line, "%d, %d, %d, %d, %d, %d, %d, %d, %d",
-                    &Type,
-                    &PositionX,
-                    &PositionY,
-                    &Scale,
-                    &MaxVelocity,
-                    &Jump,
-                    &Acceleration,
-                    &CollisionBoxX,
-                    &CollisionBoxY) != 9)
-                {
-                    TraceLog(LOG_WARNING, "Failed to load player properly");
-                    continue;
-                }
-
-                uint16_t ID = CreateEntity();
-                Enforce(ID < MaxEntityCount, "Failed to create player");
-                CurrentGame.PlayerID = ID;
-
-                W->Components[ID] = CSpatial | CMovement | CGravity | CAnimation | CCollisionBox;
-                W->Spatials[ID].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
-                W->Spatials[ID].Scale = (float)Scale;
-                W->CollisionBoxes[ID] = (CollisionBox) { .Width = CollisionBoxX, .Height = CollisionBoxY };
-
-                W->Movements[ID] = (Movement) {
-                    .Magnitude = { 0.0f, 0.0f },
-                    .Direction = { 1.0f, 1.0f },
-                    .PreviousPosition = { (float)PositionX, (float)PositionY }
-                };
-
-                W->Gravities[ID] = (Gravity) {
-                    .Acceleration = (float)Acceleration * 0.50f,
-                    .MaxVelocity = (float)MaxVelocity,
-                    .Jump = (float)Jump,
-                    .Grounded = false
-                };
-
-                W->Animations[ID] = (Animation) {
-                    .AnimationID = SamuraiIdle,
-                    .CurrentFrameInAnimation = 0,
-                    .FramesInAnimation = FrameCountSamuraiIdle,
-                    .FramesPassed = 0,
-                    .Duration = FrameDurationSamuraiIdle
-                };
-
+                // TODO:(Anirban): Find some assets for enemies
+                // Anirban: No.
                 break;
             }
             default:
@@ -234,7 +228,6 @@ void LoadLevel(const char* File)
 void GameInit(void)
 {
     CurrentGame.GameFrame = 0;
-    CurrentGame.PlayerID = UINT16_MAX;
     World* W = &CurrentGame.GameWorld;
 
     LoadAssets();
@@ -270,7 +263,7 @@ void GameInit(void)
 
 void GetUserInput(void)
 {
-    CurrentGame.UserInput = (Input) {
+    CurrentGame.GamePlayer.UserInput = (Input) {
         .Z = IsKeyDown(KEY_Z),
         .X = IsKeyDown(KEY_X),
         .C = IsKeyDown(KEY_C),
