@@ -9,8 +9,8 @@
 
 // Player Bitmasks
 #define CanJump UINT16_C(0x1)
-#define IsStanding UINT16_C(0x2)
-#define ChangedState UINT16_C(0x4)
+#define HasChangedState UINT16_C(0x2)
+//#define HasChangedState UINT16_C(0x4)
 //#define CAnimation UINT16_C(0x8)
 //#define CTexture UINT16_C(0x10)
 //#define CCollisionBox UINT16_C(0x20)

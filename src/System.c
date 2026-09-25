@@ -68,10 +68,10 @@ void S_Animation(void)
         }
     }
 
-    if (CurrentGame.GamePlayer.Mask & ChangedState)
+    if (CurrentGame.GamePlayer.Mask & HasChangedState)
     {
         W->Animations[PID].CurrentFrameInAnimation = 0;
-        CurrentGame.GamePlayer.Mask &= ~ChangedState;
+        CurrentGame.GamePlayer.Mask &= ~HasChangedState;
     }
 
     for (uint16_t i = 0; i < W->LastAnimation; i++)
@@ -97,7 +97,9 @@ void S_Collision(uint16_t LastCollisionBox)
 
     uint16_t PID = CurrentGame.GamePlayer.ID;
     World* W = &CurrentGame.GameWorld;
-    CurrentGame.GamePlayer.Mask &= ~IsStanding;
+
+    uint16_t PreviousState = CurrentGame.GamePlayer.State;
+    bool IsStanding = false;
 
     for (uint16_t i = 0; i < LastCollisionBox; i++)
     {
@@ -121,7 +123,7 @@ void S_Collision(uint16_t LastCollisionBox)
         };
 
         Rectangle Overlap = GetCollisionRec(PlayerBox, TileBox);
-        if (Overlap.x == 0.0f && Overlap.y == 0.0f) { continue; }
+        if (Overlap.width == 0.0f || Overlap.height == 0.0f) { continue; }
         Enforce(Overlap.height != Overlap.width, "Same collision dimensions cannot be resolved, HAAALP!!");
         // This triggered once, need to solve this later
 
@@ -141,7 +143,7 @@ void S_Collision(uint16_t LastCollisionBox)
                 W->Spatials[PID].Position.y -= Overlap.height;
                 W->Movements[PID].Magnitude.y = 0.0f;
                 W->Movements[PID].Direction.y = 1.0f;
-                CurrentGame.GamePlayer.Mask |= IsStanding;
+                IsStanding = true;
             }
 
         }
@@ -163,18 +165,19 @@ void S_Collision(uint16_t LastCollisionBox)
         }
     }
 
-    if (!(CurrentGame.GamePlayer.Mask & IsStanding)
-        && CurrentGame.GamePlayer.State != PlayerStateJumping)
-    {
-        CurrentGame.GamePlayer.Mask |= ChangedState;
-        CurrentGame.GamePlayer.State = PlayerStateJumping;
-    }
+    if (!IsStanding) { CurrentGame.GamePlayer.State = PlayerStateJumping; }
+    else if (CurrentGame.GamePlayer.UserInput.Left != CurrentGame.GamePlayer.UserInput.Right) { CurrentGame.GamePlayer.State = PlayerStateRunning; }
+    else { CurrentGame.GamePlayer.State = PlayerStateIdle; }
+
+    if (PreviousState != CurrentGame.GamePlayer.State) { CurrentGame.GamePlayer.Mask |= HasChangedState; }
 }
 
 void S_Movement(void)
 {
     uint16_t PID = CurrentGame.GamePlayer.ID;
     Input UserInput = CurrentGame.GamePlayer.UserInput;
+    uint16_t PreviousState = CurrentGame.GamePlayer.State;
+
     World* W = &CurrentGame.GameWorld;
 
     Enforce(PID < MaxEntityCount, "Invalid Player ID");
@@ -184,36 +187,25 @@ void S_Movement(void)
         W->Movements[PID].Magnitude.x = CurrentGame.GamePlayer.Speed;
         W->Movements[PID].Direction.x = 1.0f;
 
-        if (CurrentGame.GamePlayer.State != PlayerStateRunning && (CurrentGame.GamePlayer.Mask & IsStanding))
-        {
-            CurrentGame.GamePlayer.Mask |= ChangedState;
-            CurrentGame.GamePlayer.State = PlayerStateRunning;
-        }
+        if (CurrentGame.GamePlayer.State != PlayerStateJumping) { CurrentGame.GamePlayer.State = PlayerStateRunning; }
     }
     else if (!UserInput.Right && UserInput.Left)
     {
         W->Movements[PID].Magnitude.x = CurrentGame.GamePlayer.Speed;;
         W->Movements[PID].Direction.x = -1.0f;
 
-        if (CurrentGame.GamePlayer.State != PlayerStateRunning && (CurrentGame.GamePlayer.Mask & IsStanding))
-        {
-
-            CurrentGame.GamePlayer.Mask |= ChangedState;
-            CurrentGame.GamePlayer.State = PlayerStateRunning;
-        }
+        if (CurrentGame.GamePlayer.State != PlayerStateJumping) { CurrentGame.GamePlayer.State = PlayerStateRunning; }
     }
     else
     {
         W->Movements[PID].Magnitude.x = 0.0f;
-
-        if (CurrentGame.GamePlayer.State != PlayerStateIdle && (CurrentGame.GamePlayer.Mask & IsStanding))
-        {
-            CurrentGame.GamePlayer.Mask |= ChangedState;
-            CurrentGame.GamePlayer.State = PlayerStateIdle;
-        }
+        if (CurrentGame.GamePlayer.State != PlayerStateJumping) { CurrentGame.GamePlayer.State = PlayerStateIdle; }
     }
 
-    if (UserInput.Up && (CurrentGame.GamePlayer.Mask & IsStanding) && (CurrentGame.GamePlayer.Mask & CanJump))
+    // Player jumps
+    if (UserInput.Up
+        && CurrentGame.GamePlayer.State != PlayerStateJumping
+        && (CurrentGame.GamePlayer.Mask & CanJump))
     {
         float Velocity = W->Movements[PID].Magnitude.y * W->Movements[PID].Direction.y;
         Velocity = -CurrentGame.GamePlayer.Jump;
@@ -221,18 +213,23 @@ void S_Movement(void)
 
         W->Movements[PID].Magnitude.y = fabsf(Velocity);
         W->Movements[PID].Direction.y = Velocity >= 0.0f ? 1.0f : -1.0f;
+
         CurrentGame.GamePlayer.Mask &= ~CanJump;
+        CurrentGame.GamePlayer.State = PlayerStateJumping;
     }
 
-    if (!UserInput.Up && !(CurrentGame.GamePlayer.Mask & IsStanding)
-        && W->Movements[PID].Magnitude.y
-        * W->Movements[PID].Direction.y < 0.0f)
+    // Player lets go of jump halfway
+    if (!UserInput.Up && CurrentGame.GamePlayer.State == PlayerStateJumping
+        && W->Movements[PID].Magnitude.y > 0.0f
+        && W->Movements[PID].Direction.y == -1.0f)
     {
         W->Movements[PID].Magnitude.y = 0.0f;
         W->Movements[PID].Direction.y = 1.0f;
     }
 
-    if ((CurrentGame.GamePlayer.Mask & IsStanding) && !UserInput.Up) { CurrentGame.GamePlayer.Mask |= CanJump; }
+    // Used to prevent bunny hops
+    if (CurrentGame.GamePlayer.State != PlayerStateJumping && !UserInput.Up) { CurrentGame.GamePlayer.Mask |= CanJump; }
+    if (PreviousState != CurrentGame.GamePlayer.State) { CurrentGame.GamePlayer.Mask |= HasChangedState; }
 
     W->Movements[PID].PreviousPosition = W->Spatials[PID].Position;
     W->Spatials[PID].Position.y += W->Movements[PID].Magnitude.y * W->Movements[PID].Direction.y;
