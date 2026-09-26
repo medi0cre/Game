@@ -53,7 +53,9 @@ void Render(void)
     for (uint16_t i = 0; i < W->LastTexture; i++)
     {
         uint16_t ID = W->TempTextureArray[i];
-        Enforce(ID < MaxEntityCount && W->Textures[ID] < TextureCount, "Invalid texture");
+        Enforce(ID < MaxEntityCount
+            && W->Textures[ID] < TextureCount, "Invalid texture");
+
         DrawTextureEx(CurrentGame.TextureArray[W->Textures[ID]],
             W->Spatials[ID].Position, 0.0f, W->Spatials[ID].Scale, WHITE);
     }
@@ -62,10 +64,12 @@ void Render(void)
     {
         uint16_t ID = W->TempAnimationArray[i];
         Enforce(ID < MaxEntityCount, "Invalid animation");
-        Enforce(ID == CurrentGame.GamePlayer.ID, "Not a player, need to handle Source.width differently now, remove later");
+        Enforce(ID == CurrentGame.GamePlayer.ID,
+            "Not a player, need to handle Source.width differently");
 
         Animation A = W->Animations[ID];
-        uint16_t FrameWidth = CurrentGame.AnimationArray[A.AnimationID].width / A.FramesInAnimation;
+        uint16_t AnimationWidth = CurrentGame.AnimationArray[A.AnimationID].width;
+        uint16_t FrameWidth = AnimationWidth / A.FramesInAnimation;
 
         Rectangle Source = {
             .x = FrameWidth * A.CurrentFrameInAnimation,
@@ -81,7 +85,8 @@ void Render(void)
             .height = Source.height * W->Spatials[ID].Scale
         };
 
-        DrawTexturePro(CurrentGame.AnimationArray[A.AnimationID], Source, Destination, (Vector2) { 0.0f, 0.0f }, 0.0f, WHITE);
+        DrawTexturePro(CurrentGame.AnimationArray[A.AnimationID],
+            Source, Destination, (Vector2) { 0.0f, 0.0f }, 0.0f, WHITE);
     }
 
     EndDrawing();
@@ -115,7 +120,11 @@ void LoadLevel(const char* File)
     W->Components[PID] = CSpatial | CMovement | CGravity | CAnimation | CCollisionBox;
     W->Spatials[PID].Position = (Vector2) { .x = 200.0f, .y = 200.0f };
     W->Spatials[PID].Scale = 1.0f;
-    W->CollisionBoxes[PID] = (CollisionBox) { .Width = 128.0f, .Height = 128.0f };
+
+    W->CollisionBoxes[PID] = (CollisionBox) {
+        .Width = 128.0f,
+        .Height = 128.0f
+    };
 
     W->Movements[PID] = (Movement) {
         .Magnitude = { 0.0f, 0.0f },
@@ -140,7 +149,9 @@ void LoadLevel(const char* File)
     while (fgets(Line, MaxLineSize, Level) != NULL)
     {
         // Skip whitespaces, ignore comments and read until null terminator
-        while (*Line == ' ' || *Line == '\n' || *Line == '\t' || *Line == '\r') { Line++; }
+        while (*Line == ' ' || *Line == '\n'
+            || *Line == '\t' || *Line == '\r') { Line++; }
+
         if (*Line == '#' || *Line == '\0') { continue; }
 
         int Type = 0;
@@ -154,7 +165,8 @@ void LoadLevel(const char* File)
         {
             case Decoration:
             {
-                int TextureID, PositionX, PositionY, ScaleNumerator, ScaleDenominator;
+                int TextureID, PositionX, PositionY;
+                int ScaleNumerator, ScaleDenominator;
 
                 if (sscanf(Line, "%d, %d, %d, %d, %d, %d",
                     &Type,
@@ -164,7 +176,7 @@ void LoadLevel(const char* File)
                     &ScaleNumerator,
                     &ScaleDenominator) != 6)
                 {
-                    TraceLog(LOG_WARNING, "Failed to load decoration properly");
+                    TraceLog(LOG_WARNING, "Failed to load decoration");
                     continue;
                 }
 
@@ -172,7 +184,11 @@ void LoadLevel(const char* File)
                 Enforce(Dec < MaxEntityCount, "Failed to create entity");
 
                 W->Components[Dec] = CSpatial | CTexture;
-                W->Spatials[Dec].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
+                W->Spatials[Dec].Position = (Vector2) {
+                    .x = (float)PositionX,
+                    .y = (float)PositionY
+                };
+
                 W->Spatials[Dec].Scale = (float)ScaleNumerator / (float)ScaleDenominator;
                 W->Textures[Dec] = (uint16_t)TextureID;
 
@@ -180,7 +196,9 @@ void LoadLevel(const char* File)
             }
             case Tile:
             {
-                int TextureID, PositionX, PositionY, ScaleNumerator, ScaleDenominator, CollisionBoxX, CollisionBoxY;
+                int TextureID, PositionX, PositionY;
+                int ScaleNumerator, ScaleDenominator;
+                int CollisionBoxX, CollisionBoxY;
 
                 if (sscanf(Line, "%d, %d, %d, %d, %d, %d, %d, %d",
                     &Type,
@@ -192,7 +210,7 @@ void LoadLevel(const char* File)
                     &CollisionBoxX,
                     &CollisionBoxY) != 8)
                 {
-                    TraceLog(LOG_WARNING, "Failed to load decoration properly");
+                    TraceLog(LOG_WARNING, "Failed to load tile properly");
                     continue;
                 }
 
@@ -200,10 +218,18 @@ void LoadLevel(const char* File)
                 Enforce(Tile < MaxEntityCount, "Failed to create entity");
 
                 W->Components[Tile] = CSpatial | CTexture | CCollisionBox;
-                W->Spatials[Tile].Position = (Vector2) { .x = (float)PositionX, .y = (float)PositionY };
+                W->Spatials[Tile].Position = (Vector2) {
+                    .x = (float)PositionX,
+                    .y = (float)PositionY
+                };
+
+                W->CollisionBoxes[Tile] = (CollisionBox) {
+                    .Width = CollisionBoxX,
+                    .Height = CollisionBoxY
+                };
+
                 W->Spatials[Tile].Scale = (float)ScaleNumerator / (float)ScaleDenominator;
                 W->Textures[Tile] = (uint16_t)TextureID;
-                W->CollisionBoxes[Tile] = (CollisionBox) { .Width = CollisionBoxX, .Height = CollisionBoxY };
 
                 break;
             }
@@ -232,7 +258,8 @@ void GameInit(void)
 
     LoadAssets();
 
-    Enforce(ArenaInit(&CurrentGame.GameArena, ArenaSize), "Failed to initialize arena");
+    Enforce(ArenaInit(&CurrentGame.GameArena, ArenaSize),
+        "Failed to initialize arena");
 
     W->Components = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint64_t), _Alignof(uint64_t));
     W->Actives = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(bool), _Alignof(bool));
