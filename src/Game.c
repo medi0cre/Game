@@ -38,6 +38,7 @@ void Update(void)
     S_Gravity(LastGravity);
     S_Movement();
     S_Collision(LastCollisionBox);
+    S_Camera();
     S_Animation();
 
     CurrentGame.GameFrame++;
@@ -49,6 +50,7 @@ void Render(void)
 
     BeginDrawing();
     ClearBackground(BLACK);
+    BeginMode2D(CurrentGame.GameCamera);
 
     for (uint16_t i = 0; i < W->LastTexture; i++)
     {
@@ -89,6 +91,7 @@ void Render(void)
             Source, Destination, (Vector2) { 0.0f, 0.0f }, 0.0f, WHITE);
     }
 
+    EndMode2D();
     EndDrawing();
 }
 
@@ -118,7 +121,7 @@ void LoadLevel(const char* File)
     };
 
     W->Components[PID] = CSpatial | CMovement | CGravity | CAnimation | CCollisionBox;
-    W->Spatials[PID].Position = (Vector2) { .x = 200.0f, .y = 200.0f };
+    W->Spatials[PID].Position = (Vector2) { .x = 640.0f, .y = 360.0f };
     W->Spatials[PID].Scale = 1.0f;
 
     W->CollisionBoxes[PID] = (CollisionBox) {
@@ -129,7 +132,7 @@ void LoadLevel(const char* File)
     W->Movements[PID] = (Movement) {
         .Magnitude = { 0.0f, 0.0f },
         .Direction = { 1.0f, 1.0f },
-        .PreviousPosition = { 200.0f, 200.0f }
+        .PreviousPosition = { 640.0f, 360.0f }
     };
 
     W->Gravities[PID] = (Gravity) {
@@ -257,6 +260,12 @@ void GameInit(void)
     World* W = &CurrentGame.GameWorld;
 
     LoadAssets();
+
+    CurrentGame.GameCamera = (Camera2D) {
+        .target = { 640.0f, 360.0f },
+        .rotation = 0.0f,
+        .zoom = 1.25f
+    };
 
     Enforce(ArenaInit(&CurrentGame.GameArena, ArenaSize),
         "Failed to initialize arena");

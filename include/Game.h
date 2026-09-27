@@ -45,6 +45,11 @@ typedef enum {
     Shinobi = 2
 } PlayerCharacter;
 
+typedef enum {
+    CameraBoxWidth = 500,
+    CameraBoxHeight = 432
+} CameraBox;
+
 typedef struct {
     bool Z;
     bool X;
@@ -72,6 +77,7 @@ typedef struct {
     Arena GameArena;
     uint64_t GameFrame;
     Player GamePlayer;
+    Camera2D GameCamera;
 } Game;
 
 extern Game CurrentGame;

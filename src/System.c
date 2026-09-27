@@ -258,3 +258,32 @@ void S_Movement(void)
     W->Spatials[PID].Position.y += (*MagnitudeY) * (*DirectionY);
     W->Spatials[PID].Position.x += (*MagnitudeX) * (*DirectionX);
 }
+
+void S_Camera(void)
+{
+    World* W = &CurrentGame.GameWorld;
+    uint16_t PID = CurrentGame.GamePlayer.ID;
+
+    Enforce(PID < MaxEntityCount,
+        "Invalid Player ID inside S_Camera()");
+
+    Camera2D* Camera = &CurrentGame.GameCamera;
+    Camera->offset = (Vector2) {
+        GetRenderWidth() * 0.5f,
+        GetRenderHeight() * 0.5f
+    };
+
+    float PlayerX = W->Spatials[PID].Position.x + W->CollisionBoxes[PID].Width * 0.5f;
+    float PlayerY = W->Spatials[PID].Position.y + W->CollisionBoxes[PID].Height * 0.5f;
+
+    float Left = Camera->target.x - CameraBoxWidth * 0.5f;
+    float Right = Camera->target.x + CameraBoxWidth * 0.5f;
+    float Top = Camera->target.y - CameraBoxHeight * 0.5f;
+    float Bottom = Camera->target.y + CameraBoxHeight * 0.5f;
+
+    if (PlayerX < Left) { Camera->target.x = PlayerX + CameraBoxWidth * 0.5f; }
+    if (PlayerX > Right) { Camera->target.x = PlayerX - CameraBoxWidth * 0.5f; }
+    if (PlayerY < Top) { Camera->target.y = PlayerY + CameraBoxHeight * 0.5f; }
+    if (PlayerY > Bottom) { Camera->target.y = PlayerY - CameraBoxHeight * 0.5f; }
+}
+
