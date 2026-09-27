@@ -22,7 +22,9 @@ uint16_t CreateEntity(void)
 void DestroyEntity(uint16_t Entity)
 {
     World* W = &CurrentGame.GameWorld;
-    Enforce(Entity < MaxEntityCount && W->Actives[Entity], "DestroyEntity() error");
+    Enforce(Entity < MaxEntityCount
+        && W->Actives[Entity], "DestroyEntity() error");
+
     W->Actives[Entity] = false;
     W->Components[Entity] = 0;
 }

@@ -49,7 +49,10 @@ void* ArenaAlloc(Arena* _Arena_, size_t Size, size_t Alignment)
         return NULL;
     }
 
-    unsigned char* AlignedMemory = (unsigned char*) (((uintptr_t)_Arena_->Current + Alignment - 1) & ~(Alignment - 1));
+    size_t Mask = Alignment - 1;
+    uintptr_t Current = (uintptr_t)_Arena_->Current;
+    unsigned char* AlignedMemory = (unsigned char*) ((Current + Mask) & ~Mask);
+
     if (AlignedMemory > _Arena_->Start + _Arena_->Size - Size)
     {
         fprintf(stderr, "Arena out of memory\n");
@@ -57,7 +60,7 @@ void* ArenaAlloc(Arena* _Arena_, size_t Size, size_t Alignment)
     }
 
     _Arena_->Current = AlignedMemory + Size;
-    return AlignedMemory;
+    return (void*)AlignedMemory;
 }
 
 bool ArenaSnapshot(Arena* _Arena_)
