@@ -166,7 +166,18 @@ typedef enum {
     ShinobiRun = 32,
     ShinobiShield = 33,
     ShinobiWalk = 34,
-    AnimationCount = 35
+    ShadowAttack1 = 35,
+    ShadowAttack2 = 36,
+    ShadowAttack3 = 37,
+    ShadowDefend = 38,
+    ShadowHurt = 39,
+    ShadowIdle = 40,
+    ShadowInvisibility = 41,
+    ShadowJump = 42,
+    ShadowMove = 43,
+    ShadowTeleport1 = 44,
+    ShadowTeleport2 = 45,
+    AnimationCount = 46
 } AnimationIndex;
 
 typedef enum {
@@ -204,7 +215,18 @@ typedef enum {
     FrameCountCoin = 4,
     FrameCountFlag = 4,
     FrameCountKey = 4,
-    FrameCountRune = 4
+    FrameCountRune = 4,
+    FrameCountShadowAttack1 = 5,
+    FrameCountShadowAttack2 = 5,
+    FrameCountShadowAttack3 = 5,
+    FrameCountShadowDefend = 5,
+    FrameCountShadowHurt = 5,
+    FrameCountShadowIdle = 5,
+    FrameCountShadowInvisibility = 5,
+    FrameCountShadowJump = 5,
+    FrameCountShadowMove = 5,
+    FrameCountShadowTeleport1 = 5,
+    FrameCountShadowTeleport2 = 5
 } AnimationFrameCount;
 
 typedef enum {
@@ -242,5 +264,17 @@ typedef enum {
     FrameDurationCoin = 20,
     FrameDurationFlag = 20,
     FrameDurationKey = 20,
-    FrameDurationRune = 20
+    FrameDurationRune = 20,
+    FrameDurationShadowAttack1 = 5,
+    FrameDurationShadowAttack2 = 5,
+    FrameDurationShadowAttack3 = 5,
+    FrameDurationShadowDefend = 5,
+    FrameDurationShadowHurt = 5,
+    FrameDurationShadowIdle = 5,
+    FrameDurationShadowInvisibility = 5,
+    FrameDurationShadowJump = 5,
+    FrameDurationShadowMove = 5,
+    FrameDurationShadowTeleport1 = 5,
+    FrameDurationShadowTeleport2 = 5
 } AnimationFrameDuration;
+

@@ -348,6 +348,17 @@ void LoadAssets(void)
     CurrentGame.AnimationArray[ShinobiRun] = LoadTexture(AssetPath "animations/shinobi/Run.png");
     CurrentGame.AnimationArray[ShinobiShield] = LoadTexture(AssetPath "animations/shinobi/Shield.png");
     CurrentGame.AnimationArray[ShinobiWalk] = LoadTexture(AssetPath "animations/shinobi/Walk.png");
+    CurrentGame.AnimationArray[ShadowAttack1] = LoadTexture(AssetPath "animations/bosses/shadow/Attack_1.png");
+    CurrentGame.AnimationArray[ShadowAttack2] = LoadTexture(AssetPath "animations/bosses/shadow/Attack_2.png");
+    CurrentGame.AnimationArray[ShadowAttack3] = LoadTexture(AssetPath "animations/bosses/shadow/Attack_3.png");
+    CurrentGame.AnimationArray[ShadowDefend] = LoadTexture(AssetPath "animations/bosses/shadow/Defend.png");
+    CurrentGame.AnimationArray[ShadowHurt] = LoadTexture(AssetPath "animations/bosses/shadow/Hurt.png");
+    CurrentGame.AnimationArray[ShadowIdle] = LoadTexture(AssetPath "animations/bosses/shadow/Idle.png");
+    CurrentGame.AnimationArray[ShadowInvisibility] = LoadTexture(AssetPath "animations/bosses/shadow/Invisibility.png");
+    CurrentGame.AnimationArray[ShadowJump] = LoadTexture(AssetPath "animations/bosses/shadow/Jump.png");
+    CurrentGame.AnimationArray[ShadowMove] = LoadTexture(AssetPath "animations/bosses/shadow/Move.png");
+    CurrentGame.AnimationArray[ShadowTeleport1] = LoadTexture(AssetPath "animations/bosses/shadow/Teleport_1.png");
+    CurrentGame.AnimationArray[ShadowTeleport2] = LoadTexture(AssetPath "animations/bosses/shadow/Teleport_2.png");
 
     // Load Textures
     CurrentGame.TextureArray[BGFull] = LoadTexture(AssetPath "background/Background.png");
