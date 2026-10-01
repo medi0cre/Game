@@ -283,6 +283,11 @@ void LoadLevel(const char* File)
                     .MaxVelocity = 20.0f
                 };
 
+                W->Healths[Enemy] = (Health) {
+                    .Max = 10000,
+                    .Current = 10000
+                };
+
                 break;
             }
             default:
@@ -321,6 +326,7 @@ void GameInit(void)
     W->Textures = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
     W->Animations = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(Animation), _Alignof(Animation));
     W->CollisionBoxes = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(CollisionBox), _Alignof(CollisionBox));
+    W->Healths = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(Health), _Alignof(Health));
 
     W->TempGravityArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
     W->TempTextureArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
@@ -332,6 +338,7 @@ void GameInit(void)
         && W->Spatials && W->Movements
         && W->Gravities && W->Textures
         && W->Animations && W->CollisionBoxes
+        && W->Healths
 
         && W->TempGravityArray && W->TempTextureArray
         && W->TempAnimationArray && W->TempTileArray
@@ -384,6 +391,11 @@ void PlayerInit(void)
         .FramesInAnimation = FrameCountSamuraiIdle,
         .FramesPassed = 0,
         .Duration = FrameDurationSamuraiIdle
+    };
+
+    W->Healths[PID] = (Health) {
+        .Max = 10000,
+        .Current = 10000
     };
 }
 
