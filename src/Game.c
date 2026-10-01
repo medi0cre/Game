@@ -123,6 +123,30 @@ void Render(void)
     }
 
     EndMode2D();
+
+    // Draw UI
+    uint16_t PID = CurrentGame.GamePlayer.ID;
+    float Current = (float)W->Healths[PID].Current;
+    float Max = (float)W->Healths[PID].Max;
+
+    Rectangle HealthBar = {
+        .x = 45.0f,
+        .y = 19.0f,
+        .width = (400.0f * Current) / Max,
+        .height = 10.0f
+    };
+
+    Rectangle HealthBarOutline = {
+        .x = 45.0f,
+        .y = 19.0f,
+        .width = 400.0f,
+        .height = 10.0f
+    };
+
+    DrawText("HP", 14.0f, 16.0f, 18, GREEN);
+    DrawRectangleRounded(HealthBar, 0.5f, 4, GREEN);
+    DrawRectangleRoundedLines(HealthBarOutline, 0.5f, 4, WHITE);
+
     EndDrawing();
 }
 
