@@ -400,6 +400,14 @@ void GetUserInput(void)
     };
 }
 
+void LogMemoryUsed(void)
+{
+    Arena* A = &CurrentGame.GameArena;
+    size_t Used = (size_t)(A->Current - A->Start);
+    size_t Percentage = Used * 100 / A->Size;
+    TraceLog(LOG_INFO, "Memory used: %zu out of %zu, %zu %", Used, A->Size, Percentage);
+}
+
 void LoadAssets(void)
 {
     // Load Animations

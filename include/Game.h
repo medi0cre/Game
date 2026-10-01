@@ -84,6 +84,7 @@ extern Game CurrentGame;
 
 void GameInit(void);
 void PlayerInit(void);
+void LogMemoryUsed(void);
 void LoadAssets(void);
 void GetUserInput(void);
 void Update(void);
