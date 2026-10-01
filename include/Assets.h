@@ -221,7 +221,7 @@ typedef enum {
     FrameCountShadowAttack3 = 5,
     FrameCountShadowDefend = 5,
     FrameCountShadowHurt = 5,
-    FrameCountShadowIdle = 5,
+    FrameCountShadowIdle = 8,
     FrameCountShadowInvisibility = 5,
     FrameCountShadowJump = 5,
     FrameCountShadowMove = 5,

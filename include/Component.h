@@ -9,7 +9,7 @@
 #define CAnimation UINT64_C(0x8)
 #define CTexture UINT64_C(0x10)
 #define CCollisionBox UINT64_C(0x20)
-//#define Component7 UINT64_C(0x40)
+#define CAI UINT64_C(0x40)
 //#define Component8 UINT64_C(0x80)
 //#define Component9 UINT64_C(0x100)
 //#define Component10 UINT64_C(0x200)
@@ -67,6 +67,11 @@
 //#define Component62 UINT64_C(0x2000000000000000)
 //#define Component63 UINT64_C(0x4000000000000000)
 //#define Component64 UINT64_C(0x8000000000000000)
+
+#define CPlayer (CSpatial | CMovement | CGravity | CAnimation | CCollisionBox)
+#define CTile (CSpatial | CTexture | CCollisionBox)
+#define CDecoration (CSpatial | CTexture)
+#define CEnemy (CSpatial | CMovement | CGravity | CAnimation | CCollisionBox | CAI)
 
 typedef struct {
     Vector2 Position;

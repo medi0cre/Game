@@ -96,107 +96,14 @@ void S_Animation(void)
     }
 }
 
-void S_Collision(uint16_t LastCollisionBox)
+void S_MovementX(void)
 {
-    Enforce(LastCollisionBox < MaxEntityCount,
-        "Precondition broken inside S_Collision()");
-
-    uint16_t PID = CurrentGame.GamePlayer.ID;
-    World* W = &CurrentGame.GameWorld;
-
-    uint16_t PreviousState = CurrentGame.GamePlayer.State;
-    bool IsStanding = false;
-
-    for (uint16_t i = 0; i < LastCollisionBox; i++)
-    {
-        uint16_t ID = W->TempCollisionBoxArray[i];
-        if (ID == PID) { continue; }
-
-        Enforce(ID < MaxEntityCount, "Invalid ID inside S_Collision()");
-
-        Rectangle PlayerBox = {
-            .x = W->Spatials[PID].Position.x,
-            .y = W->Spatials[PID].Position.y,
-            .width = W->CollisionBoxes[PID].Width,
-            .height = W->CollisionBoxes[PID].Height
-        };
-
-        Rectangle TileBox = {
-            .x = W->Spatials[ID].Position.x,
-            .y = W->Spatials[ID].Position.y,
-            .width = W->CollisionBoxes[ID].Width,
-            .height = W->CollisionBoxes[ID].Height
-        };
-
-        Rectangle Overlap = GetCollisionRec(PlayerBox, TileBox);
-        if (Overlap.width == 0.0f || Overlap.height == 0.0f) { continue; }
-
-        // This triggered once, need to solve this later
-        Enforce(Overlap.height != Overlap.width,
-            "Same collision dimensions cannot be resolved, HAAALP!!");
-
-        if (Overlap.width > Overlap.height) // Vertical Collision
-        {
-            float* PositionY = &W->Spatials[PID].Position.y;
-
-            // Player hits tile from below
-            if (*PositionY < W->Movements[PID].PreviousPosition.y)
-            {
-                *PositionY += Overlap.height;
-                W->Movements[PID].Magnitude.y = 0.0f;
-                W->Movements[PID].Direction.y = 1.0f;
-            }
-
-            // Player hits tile from above
-            else if (*PositionY > W->Movements[PID].PreviousPosition.y)
-            {
-                *PositionY -= Overlap.height;
-                W->Movements[PID].Magnitude.y = 0.0f;
-                W->Movements[PID].Direction.y = 1.0f;
-                IsStanding = true;
-            }
-
-        }
-        else if (Overlap.width < Overlap.height) // Horizontal Collision
-        {
-            float* PositionX = &W->Spatials[PID].Position.x;
-
-            // Player hits tile from the right
-            if (*PositionX < W->Movements[PID].PreviousPosition.x)
-            {
-                *PositionX += Overlap.width;
-                W->Movements[PID].Magnitude.x = 0.0f;
-            }
-
-            // Player hits tile from the left
-            else if (*PositionX > W->Movements[PID].PreviousPosition.x)
-            {
-                W->Spatials[PID].Position.x -= Overlap.width;
-                W->Movements[PID].Magnitude.x = 0.0f;
-            }
-        }
-    }
-
-    uint16_t* State = &CurrentGame.GamePlayer.State;
-    uint16_t* Mask = &CurrentGame.GamePlayer.Mask;
-    Input UserInput = CurrentGame.GamePlayer.UserInput;
-
-    if (!IsStanding) { *State = PlayerStateJumping; }
-    else if (UserInput.Left != UserInput.Right) { *State = PlayerStateRunning; }
-    else { *State = PlayerStateIdle; }
-
-    if (PreviousState != *State) { *Mask |= HasChangedState; }
-}
-
-void S_Movement(void)
-{
+    // For now, only player entity has horizontal movement
     uint16_t PID = CurrentGame.GamePlayer.ID;
     Input UserInput = CurrentGame.GamePlayer.UserInput;
-    uint16_t PreviousState = CurrentGame.GamePlayer.State;
 
     World* W = &CurrentGame.GameWorld;
     uint16_t* State = &CurrentGame.GamePlayer.State;
-    uint16_t* Mask = &CurrentGame.GamePlayer.Mask;
 
     Enforce(PID < MaxEntityCount, "Invalid Player ID");
 
@@ -223,13 +130,125 @@ void S_Movement(void)
         if (*State != PlayerStateJumping) { *State = PlayerStateIdle; }
     }
 
+    W->Movements[PID].PreviousPosition.x = W->Spatials[PID].Position.x;
+    W->Spatials[PID].Position.x += (*MagnitudeX) * (*DirectionX);
+}
+
+void S_CollisionX(uint16_t LastTile, uint16_t LastEnemy)
+{
+    Enforce(LastEnemy < MaxEntityCount
+        && LastTile < MaxEntityCount,
+        "S_CollisionX: Invalid entity ID");
+
+    uint16_t PID = CurrentGame.GamePlayer.ID;
+    World* W = &CurrentGame.GameWorld;
+    float* PositionX = &W->Spatials[PID].Position.x;
+
+    // Player tile collisions
+    for (uint16_t i = 0; i < LastTile; i++)
+    {
+        uint16_t ID = W->TempTileArray[i];
+        Enforce(ID < MaxEntityCount, "Invalid ID inside S_Collision()");
+
+        Rectangle PlayerBox = {
+            .x = W->Spatials[PID].Position.x,
+            .y = W->Spatials[PID].Position.y,
+            .width = W->CollisionBoxes[PID].Width,
+            .height = W->CollisionBoxes[PID].Height
+        };
+
+        Rectangle TileBox = {
+            .x = W->Spatials[ID].Position.x,
+            .y = W->Spatials[ID].Position.y,
+            .width = W->CollisionBoxes[ID].Width,
+            .height = W->CollisionBoxes[ID].Height
+        };
+
+        Rectangle Overlap = GetCollisionRec(PlayerBox, TileBox);
+        if (Overlap.width == 0.0f || Overlap.height == 0.0f) { continue; }
+
+        // Player hits tile from the right
+        if (*PositionX < W->Movements[PID].PreviousPosition.x)
+        {
+            *PositionX += Overlap.width;
+            W->Movements[PID].Magnitude.x = 0.0f;
+        }
+
+        // Player hits tile from the left
+        else if (*PositionX > W->Movements[PID].PreviousPosition.x)
+        {
+            W->Spatials[PID].Position.x -= Overlap.width;
+            W->Movements[PID].Magnitude.x = 0.0f;
+        }
+    }
+
+    // Player enemy collisions
+    for (uint16_t i = 0; i < LastEnemy; i++)
+    {
+        uint16_t ID = W->TempEnemyArray[i];
+        Enforce(ID < MaxEntityCount, "Invalid ID inside S_Collision()");
+
+        Rectangle PlayerBox = {
+            .x = W->Spatials[PID].Position.x,
+            .y = W->Spatials[PID].Position.y,
+            .width = W->CollisionBoxes[PID].Width,
+            .height = W->CollisionBoxes[PID].Height
+        };
+
+        Rectangle EnemyBox = {
+            .x = W->Spatials[ID].Position.x,
+            .y = W->Spatials[ID].Position.y,
+            .width = W->CollisionBoxes[ID].Width,
+            .height = W->CollisionBoxes[ID].Height
+        };
+
+        Rectangle Overlap = GetCollisionRec(PlayerBox, EnemyBox);
+        if (Overlap.width == 0.0f || Overlap.height == 0.0f) { continue; }
+
+        // Player hits enemy from the right
+        if (*PositionX < W->Movements[PID].PreviousPosition.x)
+        {
+            *PositionX += Overlap.width;
+            W->Movements[PID].Magnitude.x = 0.0f;
+        }
+
+        // Player hits enemy from the left
+        else if (*PositionX > W->Movements[PID].PreviousPosition.x)
+        {
+            W->Spatials[PID].Position.x -= Overlap.width;
+            W->Movements[PID].Magnitude.x = 0.0f;
+        }
+    }
+}
+
+void S_MovementY(uint16_t LastEnemy)
+{
+    uint16_t PID = CurrentGame.GamePlayer.ID;
+    World* W = &CurrentGame.GameWorld;
+
+    for (uint16_t i = 0; i < LastEnemy; i++)
+    {
+        uint16_t ID = W->TempEnemyArray[i];
+        Enforce(ID < MaxEntityCount,
+            "Invalid enemy ID in MovementY");
+
+        float* MagnitudeY = &W->Movements[ID].Magnitude.y;
+        float* DirectionY = &W->Movements[ID].Direction.y;
+
+        W->Movements[ID].PreviousPosition.y = W->Spatials[ID].Position.y;
+        W->Spatials[ID].Position.y += (*MagnitudeY) * (*DirectionY);
+    }
+
     float* MagnitudeY = &W->Movements[PID].Magnitude.y;
     float* DirectionY = &W->Movements[PID].Direction.y;
 
+    Input UserInput = CurrentGame.GamePlayer.UserInput;
+    uint16_t* State = &CurrentGame.GamePlayer.State;
+    uint16_t* Mask = &CurrentGame.GamePlayer.Mask;
+
     // Player jumps
-    if (UserInput.Up
-        && *State != PlayerStateJumping
-        && (*Mask & CanJump))
+    if (UserInput.Up && (*Mask & CanJump)
+        && *State != PlayerStateJumping)
     {
         float Velocity = -CurrentGame.GamePlayer.Jump;
         Velocity = fmaxf(Velocity, -W->Gravities[PID].MaxVelocity);
@@ -243,8 +262,7 @@ void S_Movement(void)
 
     // Player lets go of jump halfway
     if (!UserInput.Up && *State == PlayerStateJumping
-        && *MagnitudeY > 0.0f
-        && *DirectionY == -1.0f)
+        && *MagnitudeY > 0.0f && *DirectionY == -1.0f)
     {
         *MagnitudeY = 0.0f;
         *DirectionY = 1.0f;
@@ -252,11 +270,165 @@ void S_Movement(void)
 
     // Used to prevent bunny hops
     if (*State != PlayerStateJumping && !UserInput.Up) { *Mask |= CanJump; }
-    if (PreviousState != *State) { *Mask |= HasChangedState; }
 
-    W->Movements[PID].PreviousPosition = W->Spatials[PID].Position;
+    W->Movements[PID].PreviousPosition.y = W->Spatials[PID].Position.y;
     W->Spatials[PID].Position.y += (*MagnitudeY) * (*DirectionY);
-    W->Spatials[PID].Position.x += (*MagnitudeX) * (*DirectionX);
+}
+
+void S_CollisionY(uint16_t LastTile, uint16_t LastEnemy)
+{
+    Enforce(LastEnemy < MaxEntityCount
+        && LastTile < MaxEntityCount,
+        "S_CollisionY: Invalid entity ID");
+
+    uint16_t PID = CurrentGame.GamePlayer.ID;
+    World* W = &CurrentGame.GameWorld;
+
+    // Ironically, the order is VERY important here
+    // Enemy movement updates must be resolved before player
+    // Otherwise, the enemies can get pushed into the player causing weird bugs
+
+    // Enemy tile collisions
+    for (uint16_t i = 0; i < LastEnemy; i++)
+    {
+        uint16_t EID = W->TempEnemyArray[i];
+        Enforce(EID < MaxEntityCount,
+            "Invalid enemy ID");
+
+        for (uint16_t j = 0; j < LastTile; j++)
+        {
+            uint16_t TID = W->TempTileArray[j];
+            Enforce(TID < MaxEntityCount,
+                "Invalid tile ID");
+
+            Rectangle TileBox = {
+                .x = W->Spatials[TID].Position.x,
+                .y = W->Spatials[TID].Position.y,
+                .width = W->CollisionBoxes[TID].Width,
+                .height = W->CollisionBoxes[TID].Height
+            };
+
+            Rectangle EnemyBox = {
+                .x = W->Spatials[EID].Position.x,
+                .y = W->Spatials[EID].Position.y,
+                .width = W->CollisionBoxes[EID].Width,
+                .height = W->CollisionBoxes[EID].Height
+            };
+
+            Rectangle Overlap = GetCollisionRec(TileBox, EnemyBox);
+            if (Overlap.width == 0.0f || Overlap.height == 0.0f) { continue; }
+
+            float* PositionY = &W->Spatials[EID].Position.y;
+
+            // Enemy hits tile from below
+            if (*PositionY < W->Movements[EID].PreviousPosition.y)
+            {
+                *PositionY += Overlap.height;
+                W->Movements[EID].Magnitude.y = 0.0f;
+                W->Movements[EID].Direction.y = 1.0f;
+            }
+
+            // Enemy hits tile from above
+            else if (*PositionY > W->Movements[EID].PreviousPosition.y)
+            {
+                *PositionY -= Overlap.height;
+                W->Movements[EID].Magnitude.y = 0.0f;
+                W->Movements[EID].Direction.y = 1.0f;
+            }
+        }
+    }
+
+    float* PositionY = &W->Spatials[PID].Position.y;
+    bool PlayerStand = false;
+
+    // Player tile collisions
+    for (uint16_t i = 0; i < LastTile; i++)
+    {
+        uint16_t ID = W->TempTileArray[i];
+        Enforce(ID < MaxEntityCount, "Invalid ID inside S_CollisionY");
+
+        Rectangle PlayerBox = {
+            .x = W->Spatials[PID].Position.x,
+            .y = W->Spatials[PID].Position.y,
+            .width = W->CollisionBoxes[PID].Width,
+            .height = W->CollisionBoxes[PID].Height
+        };
+
+        Rectangle TileBox = {
+            .x = W->Spatials[ID].Position.x,
+            .y = W->Spatials[ID].Position.y,
+            .width = W->CollisionBoxes[ID].Width,
+            .height = W->CollisionBoxes[ID].Height
+        };
+
+        Rectangle Overlap = GetCollisionRec(PlayerBox, TileBox);
+        if (Overlap.width == 0.0f || Overlap.height == 0.0f) { continue; }
+
+        // Player hits tile from below
+        if (*PositionY < W->Movements[PID].PreviousPosition.y)
+        {
+            *PositionY += Overlap.height;
+            W->Movements[PID].Magnitude.y = 0.0f;
+            W->Movements[PID].Direction.y = 1.0f;
+        }
+
+        // Player hits tile from above
+        else if (*PositionY > W->Movements[PID].PreviousPosition.y)
+        {
+            *PositionY -= Overlap.height;
+            W->Movements[PID].Magnitude.y = 0.0f;
+            W->Movements[PID].Direction.y = 1.0f;
+            PlayerStand = true;
+        }
+    }
+
+    // Player enemy collisions
+    for (uint16_t i = 0; i < LastEnemy; i++)
+    {
+        uint16_t ID = W->TempEnemyArray[i];
+        Enforce(ID < MaxEntityCount, "Invalid ID inside S_Collision()");
+
+        Rectangle PlayerBox = {
+            .x = W->Spatials[PID].Position.x,
+            .y = W->Spatials[PID].Position.y,
+            .width = W->CollisionBoxes[PID].Width,
+            .height = W->CollisionBoxes[PID].Height
+        };
+
+        Rectangle EnemyBox = {
+            .x = W->Spatials[ID].Position.x,
+            .y = W->Spatials[ID].Position.y,
+            .width = W->CollisionBoxes[ID].Width,
+            .height = W->CollisionBoxes[ID].Height
+        };
+
+        Rectangle Overlap = GetCollisionRec(PlayerBox, EnemyBox);
+        if (Overlap.width == 0.0f || Overlap.height == 0.0f) { continue; }
+
+        // Player hits enemy from below
+        if (*PositionY < W->Movements[PID].PreviousPosition.y)
+        {
+            *PositionY += Overlap.height;
+            W->Movements[PID].Magnitude.y = 0.0f;
+            W->Movements[PID].Direction.y = 1.0f;
+        }
+
+        // Player hits enemy from above
+        else if (*PositionY > W->Movements[PID].PreviousPosition.y)
+        {
+            *PositionY -= Overlap.height;
+            W->Movements[PID].Magnitude.y = 0.0f;
+            W->Movements[PID].Direction.y = 1.0f;
+            PlayerStand = true;
+        }
+    }
+
+    uint16_t* State = &CurrentGame.GamePlayer.State;
+    Input UserInput = CurrentGame.GamePlayer.UserInput;
+
+    if (!PlayerStand) { *State = PlayerStateJumping; }
+    else if (UserInput.Left != UserInput.Right) { *State = PlayerStateRunning; }
+    else { *State = PlayerStateIdle; }
 }
 
 void S_Camera(void)

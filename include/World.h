@@ -14,12 +14,11 @@ typedef struct {
     bool* Actives;
 
     // Temporary Resources
-    uint16_t* TempSpatialArray;
-    uint16_t* TempMovementArray;
     uint16_t* TempGravityArray;
     uint16_t* TempTextureArray;
     uint16_t* TempAnimationArray;
-    uint16_t* TempCollisionBoxArray;
+    uint16_t* TempTileArray;
+    uint16_t* TempEnemyArray;
 
     uint16_t LastTexture;
     uint16_t LastAnimation;

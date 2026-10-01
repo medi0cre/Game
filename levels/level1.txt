@@ -20,3 +20,6 @@
 0, 66, 1200, 640, 80, 32, 80, 80
 0, 66, 1200, 560, 80, 32, 80, 80
 0, 66, 0, 560, 80, 32, 80, 80
+
+# Enemies: EntityType, AnimationIndex, PositionX, PositionY, ScaleNumerator, ScaleDenominator, CollisionBoxX, CollisionBoxY
+2, 40, 200, 200, 128, 64, 128, 128

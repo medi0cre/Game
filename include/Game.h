@@ -83,6 +83,7 @@ typedef struct {
 extern Game CurrentGame;
 
 void GameInit(void);
+void PlayerInit(void);
 void LoadAssets(void);
 void GetUserInput(void);
 void Update(void);

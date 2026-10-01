@@ -13,9 +13,8 @@ void Update(void)
     World* W = &CurrentGame.GameWorld;
 
     uint16_t LastGravity = 0;
-    uint16_t LastMovement = 0;
-    uint16_t LastSpatial = 0;
-    uint16_t LastCollisionBox = 0;
+    uint16_t LastTile = 0;
+    uint16_t LastEnemy = 0;
 
     // Declare these in the World struct since they are needed for rendering
     W->LastAnimation = 0;
@@ -27,18 +26,26 @@ void Update(void)
         uint64_t Component = W->Components[i];
         Enforce(Component != 0, "Useless entity");
 
-        if (Component & CSpatial) { W->TempSpatialArray[LastSpatial++] = i; }
-        if (Component & CCollisionBox) { W->TempCollisionBoxArray[LastCollisionBox++] = i; }
-        if (Component & CMovement) { W->TempMovementArray[LastMovement++] = i; }
         if (Component & CGravity) { W->TempGravityArray[LastGravity++] = i; }
         if (Component & CAnimation) { W->TempAnimationArray[W->LastAnimation++] = i; }
         if (Component & CTexture) { W->TempTextureArray[W->LastTexture++] = i; }
+
+        if (Component == CTile) { W->TempTileArray[LastTile++] = i; }
+        if (Component == CEnemy) { W->TempEnemyArray[LastEnemy++] = i; }
     }
 
+    uint16_t PreviousState = CurrentGame.GamePlayer.State;
+    uint16_t* State = &CurrentGame.GamePlayer.State;
+    uint16_t* Mask = &CurrentGame.GamePlayer.Mask;
+
     S_Gravity(LastGravity);
-    S_Movement();
-    S_Collision(LastCollisionBox);
+    S_MovementX();
+    S_CollisionX(LastTile, LastEnemy);
+    S_MovementY(LastEnemy);
+    S_CollisionY(LastTile, LastEnemy);
     S_Camera();
+
+    if (*State != PreviousState) { *Mask |= HasChangedState; }
     S_Animation();
 
     CurrentGame.GameFrame++;
@@ -60,14 +67,25 @@ void Render(void)
 
         DrawTextureEx(CurrentGame.TextureArray[W->Textures[ID]],
             W->Spatials[ID].Position, 0.0f, W->Spatials[ID].Scale, WHITE);
+
+        // Debug Lines
+        if (W->Components[ID] & CCollisionBox)
+        {
+            Rectangle TextureRectangle = (Rectangle) {
+                .x = W->Spatials[ID].Position.x,
+                .y = W->Spatials[ID].Position.y,
+                .width = (float)W->CollisionBoxes[ID].Width,
+                .height = (float)W->CollisionBoxes[ID].Height
+            };
+
+            DrawRectangleLinesEx(TextureRectangle, 1.0f, RED);
+        }
     }
 
     for (uint16_t i = 0; i < W->LastAnimation; i++)
     {
         uint16_t ID = W->TempAnimationArray[i];
         Enforce(ID < MaxEntityCount, "Invalid animation");
-        Enforce(ID == CurrentGame.GamePlayer.ID,
-            "Not a player, need to handle Source.width differently");
 
         Animation A = W->Animations[ID];
         uint16_t AnimationWidth = CurrentGame.AnimationArray[A.AnimationID].width;
@@ -89,6 +107,19 @@ void Render(void)
 
         DrawTexturePro(CurrentGame.AnimationArray[A.AnimationID],
             Source, Destination, (Vector2) { 0.0f, 0.0f }, 0.0f, WHITE);
+
+        // Debug Lines
+        if (W->Components[ID] & CCollisionBox)
+        {
+            Rectangle AnimationRectangle = (Rectangle) {
+                .x = W->Spatials[ID].Position.x,
+                .y = W->Spatials[ID].Position.y,
+                .width = (float)W->CollisionBoxes[ID].Width,
+                .height = (float)W->CollisionBoxes[ID].Height
+            };
+
+            DrawRectangleLinesEx(AnimationRectangle, 1.0f, RED);
+        }
     }
 
     EndMode2D();
@@ -104,49 +135,8 @@ void LoadLevel(const char* File)
     char* Line = ArenaAlloc(&CurrentGame.GameArena, MaxLineSize, _Alignof(char));
     Enforce(Line, "Failed to allocate line buffer");
 
+    PlayerInit();
     World* W = &CurrentGame.GameWorld;
-
-    // Initialize Player First
-    uint16_t PID = CreateEntity();
-    Enforce(PID == 0, "Player should always be loaded first");
-
-    CurrentGame.GamePlayer = (Player) {
-        .Character = Samurai,
-        .ID = PID,
-        .Jump = 16,
-        .Mask = 0,
-        .Speed = 8,
-        .State = PlayerStateIdle,
-        .UserInput = { 0 }
-    };
-
-    W->Components[PID] = CSpatial | CMovement | CGravity | CAnimation | CCollisionBox;
-    W->Spatials[PID].Position = (Vector2) { .x = 640.0f, .y = 360.0f };
-    W->Spatials[PID].Scale = 1.0f;
-
-    W->CollisionBoxes[PID] = (CollisionBox) {
-        .Width = 128.0f,
-        .Height = 128.0f
-    };
-
-    W->Movements[PID] = (Movement) {
-        .Magnitude = { 0.0f, 0.0f },
-        .Direction = { 1.0f, 1.0f },
-        .PreviousPosition = { 640.0f, 360.0f }
-    };
-
-    W->Gravities[PID] = (Gravity) {
-        .Acceleration = 0.5f,
-        .MaxVelocity = 20.0f
-    };
-
-    W->Animations[PID] = (Animation) {
-        .AnimationID = SamuraiIdle,
-        .CurrentFrameInAnimation = 0,
-        .FramesInAnimation = FrameCountSamuraiIdle,
-        .FramesPassed = 0,
-        .Duration = FrameDurationSamuraiIdle
-    };
 
     // Read from file and load other entities
     while (fgets(Line, MaxLineSize, Level) != NULL)
@@ -186,13 +176,13 @@ void LoadLevel(const char* File)
                 uint16_t Dec = CreateEntity();
                 Enforce(Dec < MaxEntityCount, "Failed to create entity");
 
-                W->Components[Dec] = CSpatial | CTexture;
-                W->Spatials[Dec].Position = (Vector2) {
-                    .x = (float)PositionX,
-                    .y = (float)PositionY
+                W->Components[Dec] = CDecoration;
+
+                W->Spatials[Dec] = (Spatial) {
+                    .Position = { (float)PositionX, (float)PositionY },
+                    .Scale = (float)ScaleNumerator / (float)ScaleDenominator
                 };
 
-                W->Spatials[Dec].Scale = (float)ScaleNumerator / (float)ScaleDenominator;
                 W->Textures[Dec] = (uint16_t)TextureID;
 
                 break;
@@ -220,10 +210,11 @@ void LoadLevel(const char* File)
                 uint16_t Tile = CreateEntity();
                 Enforce(Tile < MaxEntityCount, "Failed to create entity");
 
-                W->Components[Tile] = CSpatial | CTexture | CCollisionBox;
-                W->Spatials[Tile].Position = (Vector2) {
-                    .x = (float)PositionX,
-                    .y = (float)PositionY
+                W->Components[Tile] = CTile;
+
+                W->Spatials[Tile] = (Spatial) {
+                    .Position = { (float)PositionX, (float)PositionY },
+                    .Scale = (float)ScaleNumerator / (float)ScaleDenominator
                 };
 
                 W->CollisionBoxes[Tile] = (CollisionBox) {
@@ -231,7 +222,6 @@ void LoadLevel(const char* File)
                     .Height = CollisionBoxY
                 };
 
-                W->Spatials[Tile].Scale = (float)ScaleNumerator / (float)ScaleDenominator;
                 W->Textures[Tile] = (uint16_t)TextureID;
 
                 break;
@@ -240,6 +230,59 @@ void LoadLevel(const char* File)
             {
                 // TODO:(Anirban): Find some assets for enemies
                 // Anirban: No.
+
+                int AnimationID, PositionX, PositionY;
+                int ScaleNumerator, ScaleDenominator;
+                int CollisionBoxX, CollisionBoxY;
+
+                if (sscanf(Line, "%d, %d, %d, %d, %d, %d, %d, %d",
+                    &Type,
+                    &AnimationID,
+                    &PositionX,
+                    &PositionY,
+                    &ScaleNumerator,
+                    &ScaleDenominator,
+                    &CollisionBoxX,
+                    &CollisionBoxY) != 8)
+                {
+                    TraceLog(LOG_WARNING, "Failed to load enemy properly");
+                    continue;
+                }
+
+                uint16_t Enemy = CreateEntity();
+                Enforce(Enemy < MaxEntityCount, "Failed to create entity");
+
+                W->Components[Enemy] = CEnemy;
+
+                W->Spatials[Enemy] = (Spatial) {
+                    .Scale = (float)ScaleNumerator / (float)ScaleDenominator,
+                    .Position = { (float)PositionX, (float)PositionY }
+                };
+
+                W->Movements[Enemy] = (Movement) {
+                    .Magnitude = { 0.0f, 0.0f },
+                    .Direction = { 1.0f, 1.0f },
+                    .PreviousPosition = W->Spatials[Enemy].Position
+                };
+
+                W->CollisionBoxes[Enemy] = (CollisionBox) {
+                    .Width = CollisionBoxX,
+                    .Height = CollisionBoxY
+                };
+
+                W->Animations[Enemy] = (Animation) {
+                    .AnimationID = AnimationID,
+                    .CurrentFrameInAnimation = 0,
+                    .FramesInAnimation = FrameCountShadowIdle,
+                    .FramesPassed = 0,
+                    .Duration = FrameDurationShadowIdle
+                };
+
+                W->Gravities[Enemy] = (Gravity) {
+                    .Acceleration = 0.5f,
+                    .MaxVelocity = 20.0f
+                };
+
                 break;
             }
             default:
@@ -279,22 +322,69 @@ void GameInit(void)
     W->Animations = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(Animation), _Alignof(Animation));
     W->CollisionBoxes = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(CollisionBox), _Alignof(CollisionBox));
 
-    W->TempSpatialArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
-    W->TempMovementArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
     W->TempGravityArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
     W->TempTextureArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
     W->TempAnimationArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
-    W->TempCollisionBoxArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    W->TempTileArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
+    W->TempEnemyArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
 
     Enforce(W->Components && W->Actives
         && W->Spatials && W->Movements
         && W->Gravities && W->Textures
         && W->Animations && W->CollisionBoxes
 
-        && W->TempSpatialArray && W->TempMovementArray
         && W->TempGravityArray && W->TempTextureArray
-        && W->TempAnimationArray && W->TempCollisionBoxArray
+        && W->TempAnimationArray && W->TempTileArray
+        && W->TempEnemyArray
         , "Failed to initialize component arrays");
+}
+
+void PlayerInit(void)
+{
+    uint16_t PID = CreateEntity();
+    Enforce(PID == 0, "Player should always be loaded first");
+    World* W = &CurrentGame.GameWorld;
+
+    CurrentGame.GamePlayer = (Player) {
+        .Character = Samurai,
+        .ID = PID,
+        .Jump = 16,
+        .Mask = 0,
+        .Speed = 8,
+        .State = PlayerStateIdle,
+        .UserInput = { 0 }
+    };
+
+    W->Components[PID] = CPlayer;
+
+    W->Spatials[PID] = (Spatial) {
+        .Position = { 640.0f, 360.0f },
+        .Scale = 1.0f
+    };
+
+    W->CollisionBoxes[PID] = (CollisionBox) {
+        .Width = 128.0f,
+        .Height = 128.0f
+    };
+
+    W->Movements[PID] = (Movement) {
+        .Magnitude = { 0.0f, 0.0f },
+        .Direction = { 1.0f, 1.0f },
+        .PreviousPosition = { 640.0f, 360.0f }
+    };
+
+    W->Gravities[PID] = (Gravity) {
+        .Acceleration = 0.5f,
+        .MaxVelocity = 20.0f
+    };
+
+    W->Animations[PID] = (Animation) {
+        .AnimationID = SamuraiIdle,
+        .CurrentFrameInAnimation = 0,
+        .FramesInAnimation = FrameCountSamuraiIdle,
+        .FramesPassed = 0,
+        .Duration = FrameDurationSamuraiIdle
+    };
 }
 
 void GetUserInput(void)
