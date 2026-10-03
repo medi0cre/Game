@@ -72,12 +72,6 @@ void S_Animation(void)
         }
     }
 
-    if (CurrentGame.GamePlayer.Mask & HasChangedState)
-    {
-        W->Animations[PID].CurrentFrameInAnimation = 0;
-        CurrentGame.GamePlayer.Mask &= ~HasChangedState;
-    }
-
     for (uint16_t i = 0; i < W->LastAnimation; i++)
     {
         uint16_t ID = W->TempAnimationArray[i];

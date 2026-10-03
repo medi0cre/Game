@@ -36,7 +36,6 @@ void Update(void)
 
     uint16_t PreviousState = CurrentGame.GamePlayer.State;
     uint16_t* State = &CurrentGame.GamePlayer.State;
-    uint16_t* Mask = &CurrentGame.GamePlayer.Mask;
 
     S_Gravity(LastGravity);
     S_MovementX();
@@ -45,7 +44,12 @@ void Update(void)
     S_CollisionY(LastTile, LastEnemy);
     S_Camera();
 
-    if (*State != PreviousState) { *Mask |= HasChangedState; }
+    if (*State != PreviousState)
+    {
+        uint16_t PID = CurrentGame.GamePlayer.ID;
+        W->Animations[PID].CurrentFrameInAnimation = 0;
+    }
+
     S_Animation();
 
     CurrentGame.GameFrame++;
