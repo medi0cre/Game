@@ -12,6 +12,7 @@ typedef struct {
     uint16_t* Textures;
     Animation* Animations;
     Health* Healths;
+    Jump* Jumps;
     bool* Actives;
 
     // Temporary Resources

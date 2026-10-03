@@ -11,7 +11,7 @@
 #define CCollisionBox UINT64_C(0x20)
 #define CAI UINT64_C(0x40)
 #define CHealth UINT64_C(0x80)
-//#define Component9 UINT64_C(0x100)
+#define CJump UINT64_C(0x100)
 //#define Component10 UINT64_C(0x200)
 //#define Component11 UINT64_C(0x400)
 //#define Component12 UINT64_C(0x800)
@@ -68,10 +68,10 @@
 //#define Component63 UINT64_C(0x4000000000000000)
 //#define Component64 UINT64_C(0x8000000000000000)
 
-#define CPlayer (CSpatial | CMovement | CGravity | CAnimation | CCollisionBox | CHealth)
+#define CPlayer (CSpatial | CMovement | CGravity | CAnimation | CCollisionBox | CHealth | CJump)
 #define CTile (CSpatial | CTexture | CCollisionBox)
 #define CDecoration (CSpatial | CTexture)
-#define CEnemy (CSpatial | CMovement | CGravity | CAnimation | CCollisionBox | CHealth | CAI)
+#define CEnemy (CSpatial | CMovement | CGravity | CAnimation | CCollisionBox | CHealth | CJump | CAI)
 
 typedef struct {
     Vector2 Position;
@@ -106,3 +106,8 @@ typedef struct {
     uint16_t Max;
     uint16_t Current;
 } Health;
+
+typedef struct {
+    uint16_t InitialVelocity;
+    bool CanJump;
+} Jump;

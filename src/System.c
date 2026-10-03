@@ -238,19 +238,18 @@ void S_MovementY(uint16_t LastEnemy)
 
     Input UserInput = CurrentGame.GamePlayer.UserInput;
     uint16_t* State = &CurrentGame.GamePlayer.State;
-    uint16_t* Mask = &CurrentGame.GamePlayer.Mask;
 
     // Player jumps
-    if (UserInput.Up && (*Mask & CanJump)
+    if (UserInput.Up && W->Jumps[PID].CanJump
         && *State != PlayerStateJumping)
     {
-        float Velocity = -CurrentGame.GamePlayer.Jump;
+        float Velocity = -W->Jumps[PID].InitialVelocity;
         Velocity = fmaxf(Velocity, -W->Gravities[PID].MaxVelocity);
 
         *MagnitudeY = fabsf(Velocity);
         *DirectionY = Velocity >= 0.0f ? 1.0f : -1.0f;
 
-        *Mask &= ~CanJump;
+        W->Jumps[PID].CanJump = false;
         *State = PlayerStateJumping;
     }
 
@@ -263,7 +262,7 @@ void S_MovementY(uint16_t LastEnemy)
     }
 
     // Used to prevent bunny hops
-    if (*State != PlayerStateJumping && !UserInput.Up) { *Mask |= CanJump; }
+    if (*State != PlayerStateJumping && !UserInput.Up) { W->Jumps[PID].CanJump = true; }
 
     W->Movements[PID].PreviousPosition.y = W->Spatials[PID].Position.y;
     W->Spatials[PID].Position.y += (*MagnitudeY) * (*DirectionY);

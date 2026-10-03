@@ -316,6 +316,11 @@ void LoadLevel(const char* File)
                     .Current = 10000
                 };
 
+                W->Jumps[Enemy] = (Jump) {
+                    .InitialVelocity = 16,
+                    .CanJump = true
+                };
+
                 break;
             }
             default:
@@ -355,6 +360,7 @@ void GameInit(void)
     W->Animations = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(Animation), _Alignof(Animation));
     W->CollisionBoxes = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(CollisionBox), _Alignof(CollisionBox));
     W->Healths = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(Health), _Alignof(Health));
+    W->Jumps = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(Jump), _Alignof(Jump));
 
     W->TempGravityArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
     W->TempTextureArray = ArenaAlloc(&CurrentGame.GameArena, MaxEntityCount * sizeof(uint16_t), _Alignof(uint16_t));
@@ -366,7 +372,7 @@ void GameInit(void)
         && W->Spatials && W->Movements
         && W->Gravities && W->Textures
         && W->Animations && W->CollisionBoxes
-        && W->Healths
+        && W->Healths && W->Jumps
 
         && W->TempGravityArray && W->TempTextureArray
         && W->TempAnimationArray && W->TempTileArray
@@ -383,8 +389,6 @@ void PlayerInit(void)
     CurrentGame.GamePlayer = (Player) {
         .Character = Samurai,
         .ID = PID,
-        .Jump = 16,
-        .Mask = 0,
         .Speed = 8,
         .State = PlayerStateIdle,
         .UserInput = { 0 }
@@ -424,6 +428,11 @@ void PlayerInit(void)
     W->Healths[PID] = (Health) {
         .Max = 10000,
         .Current = 10000
+    };
+
+    W->Jumps[PID] = (Jump) {
+        .InitialVelocity = 16,
+        .CanJump = false
     };
 }
 
