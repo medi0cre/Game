@@ -78,12 +78,11 @@ void S_Animation(void)
         Enforce(ID < MaxEntityCount, "Invalid ID inside S_Animation()");
         Animation* A = &CurrentGame.GameWorld.Animations[ID];
 
-        if (A->FramesPassed > A->Duration)
+        if (A->FramesPassed >= A->Duration)
         {
             uint16_t* Frame = &A->CurrentFrameInAnimation;
             *Frame = (*Frame + 1) % A->FramesInAnimation;
             A->FramesPassed = 0;
-            continue;
         }
 
         A->FramesPassed++;
