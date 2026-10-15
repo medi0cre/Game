@@ -8,10 +8,10 @@
 #define CGravity UINT64_C(0x4)
 #define CAnimation UINT64_C(0x8)
 #define CTexture UINT64_C(0x10)
-//#define Component6 UINT64_C(0x20)
-//#define Component7 UINT64_C(0x40)
-//#define Component8 UINT64_C(0x80)
-//#define Component9 UINT64_C(0x100)
+#define CCollisionBox UINT64_C(0x20)
+#define CAI UINT64_C(0x40)
+#define CHealth UINT64_C(0x80)
+#define CJump UINT64_C(0x100)
 //#define Component10 UINT64_C(0x200)
 //#define Component11 UINT64_C(0x400)
 //#define Component12 UINT64_C(0x800)
@@ -68,19 +68,46 @@
 //#define Component63 UINT64_C(0x4000000000000000)
 //#define Component64 UINT64_C(0x8000000000000000)
 
+#define CPlayer (CSpatial | CMovement | CGravity | CAnimation | CCollisionBox | CHealth | CJump)
+#define CTile (CSpatial | CTexture | CCollisionBox)
+#define CDecoration (CSpatial | CTexture)
+#define CEnemy (CSpatial | CMovement | CGravity | CAnimation | CCollisionBox | CHealth | CJump | CAI)
+
 typedef struct {
     Vector2 Position;
     float Scale;
 } Spatial;
 
 typedef struct {
-    float Velocity;
-    float Gravity;
-    float Jump;
+    uint16_t Width;
+    uint16_t Height;
+} CollisionBox;
+
+typedef struct {
+    uint16_t AnimationID;
+    uint16_t FramesInAnimation;
+    uint16_t CurrentFrameInAnimation;
+    uint16_t Duration;
+    uint16_t FramesPassed;
+} Animation;
+
+typedef struct {
+    float Acceleration;
+    float MaxVelocity;
+} Gravity;
+
+typedef struct {
+    Vector2 Magnitude;
+    Vector2 Direction;
+    Vector2 PreviousPosition;
 } Movement;
 
-extern Spatial* Spatials;
-extern Movement* Movements;
-extern float* Gravities;
-extern uint16_t* Textures;
-extern uint16_t* Animations;
+typedef struct {
+    uint16_t Max;
+    uint16_t Current;
+} Health;
+
+typedef struct {
+    uint16_t InitialVelocity;
+    bool CanJump;
+} Jump;

@@ -9,11 +9,9 @@ add_executable(Game
     src/main.c
     src/Game.c
     src/Arena.c
-    src/Component.c
     src/System.c
     src/Entity.c
     src/Utils.c
-    src/Assets.c
 )
 
 target_include_directories(Game PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)

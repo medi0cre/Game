@@ -1,19 +1,17 @@
-#include <stdio.h>
 #include <Entity.h>
+#include <Game.h>
 #include <Utils.h>
-
-Entity* Entities = NULL;
 
 uint16_t CreateEntity(void)
 {
-    Enforce(Entities, "Entities has not been initialized yet");
+    World* W = &CurrentGame.GameWorld;
 
-    for (uint16_t i = 0; i < EntityMax; i++)
+    for (uint16_t i = 0; i < MaxEntityCount; i++)
     {
-        if (!Entities[i].Active)
+        if (!W->Actives[i])
         {
-            Entities[i].Active = true;
-            Entities[i].Components = 0;
+            W->Actives[i] = true;
+            W->Components[i] = 0;
             return i;
         }
     }
@@ -21,9 +19,12 @@ uint16_t CreateEntity(void)
     return UINT16_MAX;
 }
 
-void DestroyEntity(uint16_t _Entity_)
+void DestroyEntity(uint16_t Entity)
 {
-    Enforce(Entities && _Entity_ < EntityMax && Entities[_Entity_].Active, "DestroyEntity() error");
-    Entities[_Entity_].Active = false;
-    Entities[_Entity_].Components = 0;
+    World* W = &CurrentGame.GameWorld;
+    Enforce(Entity < MaxEntityCount
+        && W->Actives[Entity], "DestroyEntity() error");
+
+    W->Actives[Entity] = false;
+    W->Components[Entity] = 0;
 }

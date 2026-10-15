@@ -1,6 +1,37 @@
 #pragma once
 #include <stdbool.h>
 #include <Arena.h>
+#include <World.h>
+#include <Assets.h>
+
+#define LevelPath "../levels/"
+#define AssetPath "../assets/"
+
+typedef enum {
+    WindowWidth = 1280,
+    WindowHeight = 720,
+    MaxLineSize = 1024,
+    ArenaSize = 33554432, // 32 Megabytes
+    MaxEntityCount = 10000,
+} GameConfig;
+
+typedef enum {
+    PlayerStateIdle = 0,
+    PlayerStateRunning = 1,
+    PlayerStateJumping = 2,
+    PlayerStateAttacking = 3
+} PlayerState;
+
+typedef enum {
+    Fighter = 0,
+    Samurai = 1,
+    Shinobi = 2
+} PlayerCharacter;
+
+typedef enum {
+    CameraBoxWidth = 500,
+    CameraBoxHeight = 432
+} CameraBox;
 
 typedef struct {
     bool Z;
@@ -12,10 +43,32 @@ typedef struct {
     bool Right;
 } Input;
 
-extern Arena GameArena;
-extern uint16_t PlayerID;
+typedef struct {
+    Input UserInput;
+    uint16_t ID;
+    uint16_t State;
+    uint16_t Speed;
+    uint16_t Character;
+    bool CanAttack;
+} Player;
+
+typedef struct {
+    Texture TextureArray[TextureCount];
+    Texture AnimationArray[AnimationCount];
+    World GameWorld;
+    Arena GameArena;
+    uint64_t GameFrame;
+    Player GamePlayer;
+    Camera2D GameCamera;
+} Game;
+
+extern Game CurrentGame;
 
 void GameInit(void);
-void GameLoop(void);
-Input GetUserInput(void);
+void PlayerInit(void);
+void LogMemoryUsed(void);
+void LoadAssets(void);
+void GetUserInput(void);
+void Update(void);
+void Render(void);
 void LoadLevel(const char* File);
