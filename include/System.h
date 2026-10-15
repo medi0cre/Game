@@ -8,3 +8,4 @@ void S_CollisionY(uint16_t LastTile, uint16_t LastEnemy);
 void S_Camera(void);
 void S_Animation(void);
 void S_Gravity(uint16_t LastGravity);
+void S_Attack(void);

@@ -42,6 +42,7 @@ void Update(void)
     S_CollisionX(LastTile, LastEnemy);
     S_MovementY(LastEnemy);
     S_CollisionY(LastTile, LastEnemy);
+    S_Attack();
     S_Camera();
 
     if (*State != PreviousState)

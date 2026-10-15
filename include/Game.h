@@ -18,7 +18,8 @@ typedef enum {
 typedef enum {
     PlayerStateIdle = 0,
     PlayerStateRunning = 1,
-    PlayerStateJumping = 2
+    PlayerStateJumping = 2,
+    PlayerStateAttacking = 3
 } PlayerState;
 
 typedef enum {
@@ -48,6 +49,7 @@ typedef struct {
     uint16_t State;
     uint16_t Speed;
     uint16_t Character;
+    bool CanAttack;
 } Player;
 
 typedef struct {

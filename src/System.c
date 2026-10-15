@@ -65,6 +65,13 @@ void S_Animation(void)
             W->Animations[PID].Duration = FrameDurationSamuraiJump;
             break;
         }
+        case PlayerStateAttacking:
+        {
+            W->Animations[PID].AnimationID = SamuraiAttack1;
+            W->Animations[PID].FramesInAnimation = FrameCountSamuraiAttack1;
+            W->Animations[PID].Duration = FrameDurationSamuraiAttack1;
+            break;
+        }
         default:
         {
             Enforce(false, "Impossible player state encountered");
@@ -91,12 +98,14 @@ void S_Animation(void)
 
 void S_MovementX(void)
 {
+    uint16_t* State = &CurrentGame.GamePlayer.State;
+    if (*State == PlayerStateAttacking) { return; }
+
     // For now, only player entity has horizontal movement
     uint16_t PID = CurrentGame.GamePlayer.ID;
     Input UserInput = CurrentGame.GamePlayer.UserInput;
 
     World* W = &CurrentGame.GameWorld;
-    uint16_t* State = &CurrentGame.GamePlayer.State;
 
     Enforce(PID < MaxEntityCount, "Invalid Player ID");
 
@@ -132,6 +141,9 @@ void S_CollisionX(uint16_t LastTile, uint16_t LastEnemy)
     Enforce(LastEnemy < MaxEntityCount
         && LastTile < MaxEntityCount,
         "S_CollisionX: Invalid entity ID");
+
+    uint16_t* State = &CurrentGame.GamePlayer.State;
+    if (*State == PlayerStateAttacking) { return; }
 
     uint16_t PID = CurrentGame.GamePlayer.ID;
     World* W = &CurrentGame.GameWorld;
@@ -239,8 +251,9 @@ void S_MovementY(uint16_t LastEnemy)
     uint16_t* State = &CurrentGame.GamePlayer.State;
 
     // Player jumps
-    if (UserInput.Up && W->Jumps[PID].CanJump
-        && *State != PlayerStateJumping)
+    if (UserInput.Up
+        && W->Jumps[PID].CanJump
+        && (*State == PlayerStateIdle || *State == PlayerStateRunning))
     {
         float Velocity = -W->Jumps[PID].InitialVelocity;
         Velocity = fmaxf(Velocity, -W->Gravities[PID].MaxVelocity);
@@ -419,8 +432,40 @@ void S_CollisionY(uint16_t LastTile, uint16_t LastEnemy)
     Input UserInput = CurrentGame.GamePlayer.UserInput;
 
     if (!PlayerStand) { *State = PlayerStateJumping; }
+    else if (*State == PlayerStateAttacking) { return; }
     else if (UserInput.Left != UserInput.Right) { *State = PlayerStateRunning; }
     else { *State = PlayerStateIdle; }
+}
+
+void S_Attack(void)
+{
+    Input UserInput = CurrentGame.GamePlayer.UserInput;
+    uint16_t PID = CurrentGame.GamePlayer.ID;
+    uint16_t* State = &CurrentGame.GamePlayer.State;
+
+    World* W = &CurrentGame.GameWorld;
+
+    // Hacky but gets the job done for now
+    if (*State == PlayerStateAttacking
+        && (W->Animations[PID].CurrentFrameInAnimation + 1 >= W->Animations[PID].FramesInAnimation))
+    {
+        if (UserInput.Left == UserInput.Right) { *State = PlayerStateRunning; }
+        else { *State = PlayerStateIdle; }
+    }
+
+    if (UserInput.Z
+        && CurrentGame.GamePlayer.CanAttack
+        && (*State == PlayerStateIdle || *State == PlayerStateRunning))
+    {
+        *State = PlayerStateAttacking;
+        CurrentGame.GamePlayer.CanAttack = false;
+    }
+
+    if (!UserInput.Z
+        && (*State == PlayerStateIdle || *State == PlayerStateRunning))
+    {
+        CurrentGame.GamePlayer.CanAttack = true;
+    }
 }
 
 void S_Camera(void)
