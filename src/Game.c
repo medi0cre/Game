@@ -8,7 +8,7 @@
 
 Game CurrentGame = { 0 };
 
-void Update(void)
+void GameUpdate(void)
 {
     World* W = &CurrentGame.GameWorld;
 
@@ -56,7 +56,7 @@ void Update(void)
     CurrentGame.GameFrame++;
 }
 
-void Render(void)
+void GameRender(void)
 {
     World* W = &CurrentGame.GameWorld;
 
@@ -344,9 +344,10 @@ void GameInit(void)
     LoadAssets();
 
     CurrentGame.GameCamera = (Camera2D) {
-        .target = { 640.0f, 360.0f },
+        .target = { GetRenderWidth() * 0.5f, GetRenderHeight() * 0.5f },
         .rotation = 0.0f,
-        .zoom = 1.25f
+        .zoom = 1.0f,
+        .offset = { GetRenderWidth() * 0.5f, GetRenderHeight() * 0.5f }
     };
 
     Enforce(ArenaInit(&CurrentGame.GameArena, ArenaSize),
@@ -437,7 +438,7 @@ void PlayerInit(void)
     };
 }
 
-void GetUserInput(void)
+void GameInput(void)
 {
     CurrentGame.GamePlayer.UserInput = (Input) {
         .Z = IsKeyDown(KEY_Z),

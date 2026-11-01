@@ -6,6 +6,7 @@
 
 #define LevelPath "../levels/"
 #define AssetPath "../assets/"
+#define EditorMode 0
 
 typedef enum {
     WindowWidth = 1280,
@@ -68,7 +69,7 @@ void GameInit(void);
 void PlayerInit(void);
 void LogMemoryUsed(void);
 void LoadAssets(void);
-void GetUserInput(void);
-void Update(void);
-void Render(void);
+void GameInput(void);
+void GameUpdate(void);
+void GameRender(void);
 void LoadLevel(const char* File);
