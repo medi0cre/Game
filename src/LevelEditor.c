@@ -59,9 +59,9 @@ const char* GetTextureName(TextureIndex ID);
 
 void UpdateAssetPicker(void)
 {
-    Vector2 Mouse = GetMousePosition();
+    Vector2 ScreenMouse = GetMousePosition();
 
-    if (CheckCollisionPointRec(Mouse, UI))
+    if (CheckCollisionPointRec(ScreenMouse, UI))
     {
         float Wheel = GetMouseWheelMove();
         UIScroll -= Wheel * UICellSize * 2.0f;
@@ -74,11 +74,11 @@ void UpdateAssetPicker(void)
     UIScroll = UIScroll > 0.0f ? UIScroll : 0.0f;
     UIScroll = UIScroll < MaxScroll ? UIScroll : MaxScroll;
 
-    if (!CheckCollisionPointRec(Mouse, Grid)) { return; }
+    if (!CheckCollisionPointRec(ScreenMouse, Grid)) { return; }
     if (!IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) { return; }
 
-    uint16_t Column = (Mouse.x - Grid.x) / UICellSize;
-    uint16_t Row = (Mouse.y - Grid.y + UIScroll) / UICellSize;
+    uint16_t Column = (ScreenMouse.x - Grid.x) / UICellSize;
+    uint16_t Row = (ScreenMouse.y - Grid.y + UIScroll) / UICellSize;
 
     Enforce(
         Column < 10000
@@ -119,12 +119,13 @@ void RenderAssetPicker(void)
         uint16_t TextureID = UIBackgroundCount + i;
         Texture2D Tex = CurrentGame.TextureArray[TextureID];
 
-        Vector2 Mouse = GetMousePosition();
+        Vector2 ScreenMouse = GetMousePosition();
         Color DarkBlue = { 75, 110, 160, 255 };
         Color DarkGray = { 50, 50, 60, 255 };
 
         bool Selected = Editor.SelectedTexture == TextureID;
-        bool MouseOverCell = CheckCollisionPointRec(Mouse, Cell) && CheckCollisionPointRec(Mouse, Grid);
+        bool MouseOverCell = CheckCollisionPointRec(ScreenMouse, Cell)
+            && CheckCollisionPointRec(ScreenMouse, Grid);
 
         Color Background = MouseOverCell ? DarkBlue : DarkGray;
         DrawRectangleRec(Cell, Background);
@@ -345,19 +346,21 @@ void LevelEditorRender(void)
     ClearBackground(BLACK);
     RenderEditorWorld();
 
-    Vector2 Mouse = GetScreenToWorld2D(GetMousePosition(), CurrentGame.GameCamera);
-    DrawText(TextFormat("Mouse: (%.2f, %.2f)", Mouse.x, Mouse.y), 1000, 10, 20, WHITE);
+    Vector2 ScreenMouse = GetMousePosition();
+    Vector2 WorldMouse = GetScreenToWorld2D(ScreenMouse, CurrentGame.GameCamera);
+
+    DrawText(TextFormat("Mouse: (%.2f, %.2f)", WorldMouse.x, WorldMouse.y), 1000, 10, 20, WHITE);
     DrawText(TextFormat("FPS: %d", GetFPS()), 1000, 40, 20, WHITE);
 
-    bool MouseOverUI = CheckCollisionPointRec(Mouse, UI)
-        || CheckCollisionPointRec(Mouse, SaveRectangle);
+    bool MouseOverUI = CheckCollisionPointRec(ScreenMouse, UI)
+        || CheckCollisionPointRec(ScreenMouse, SaveRectangle);
 
     if (!MouseOverUI)
     {
         BeginMode2D(CurrentGame.GameCamera);
-        Mouse.x = floorf(Mouse.x / GridSize) * GridSize;
-        Mouse.y = floorf(Mouse.y / GridSize) * GridSize;
-        DrawRectangleLines(Mouse.x, Mouse.y, GridSize, GridSize, RED);
+        WorldMouse.x = floorf(WorldMouse.x / GridSize) * GridSize;
+        WorldMouse.y = floorf(WorldMouse.y / GridSize) * GridSize;
+        DrawRectangleLines(WorldMouse.x, WorldMouse.y, GridSize, GridSize, RED);
         EndMode2D();
     }
 
