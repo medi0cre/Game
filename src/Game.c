@@ -8,7 +8,7 @@
 
 Game CurrentGame = { 0 };
 
-void Update(void)
+void GameUpdate(void)
 {
     World* W = &CurrentGame.GameWorld;
 
@@ -56,7 +56,7 @@ void Update(void)
     CurrentGame.GameFrame++;
 }
 
-void Render(void)
+void GameRender(void)
 {
     World* W = &CurrentGame.GameWorld;
 
@@ -157,7 +157,7 @@ void Render(void)
 
 void LoadLevel(const char* File)
 {
-    FILE* Level = fopen(File, "r");
+    FILE* Level = fopen(File, "rb");
     Enforce(Level, "Failed to load level for the game");
 
     ArenaSnapshot(&CurrentGame.GameArena);
@@ -344,9 +344,10 @@ void GameInit(void)
     LoadAssets();
 
     CurrentGame.GameCamera = (Camera2D) {
-        .target = { 640.0f, 360.0f },
+        .target = { GetRenderWidth() * 0.5f, GetRenderHeight() * 0.5f },
         .rotation = 0.0f,
-        .zoom = 1.25f
+        .zoom = 1.0f,
+        .offset = { GetRenderWidth() * 0.5f, GetRenderHeight() * 0.5f }
     };
 
     Enforce(ArenaInit(&CurrentGame.GameArena, ArenaSize),
@@ -398,7 +399,7 @@ void PlayerInit(void)
     W->Components[PID] = CPlayer;
 
     W->Spatials[PID] = (Spatial) {
-        .Position = { 640.0f, 360.0f },
+        .Position = { GetRenderWidth() * 0.5f, GetRenderHeight() * 0.5f },
         .Scale = 1.0f
     };
 
@@ -410,7 +411,7 @@ void PlayerInit(void)
     W->Movements[PID] = (Movement) {
         .Magnitude = { 0.0f, 0.0f },
         .Direction = { 1.0f, 1.0f },
-        .PreviousPosition = { 640.0f, 360.0f }
+        .PreviousPosition = { GetRenderWidth() * 0.5f, GetRenderHeight() * 0.5f }
     };
 
     W->Gravities[PID] = (Gravity) {
@@ -437,7 +438,7 @@ void PlayerInit(void)
     };
 }
 
-void GetUserInput(void)
+void GameInput(void)
 {
     CurrentGame.GamePlayer.UserInput = (Input) {
         .Z = IsKeyDown(KEY_Z),

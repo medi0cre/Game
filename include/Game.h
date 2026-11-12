@@ -6,6 +6,7 @@
 
 #define LevelPath "../levels/"
 #define AssetPath "../assets/"
+#define EditorMode 1
 
 typedef enum {
     WindowWidth = 1280,
@@ -13,6 +14,7 @@ typedef enum {
     MaxLineSize = 1024,
     ArenaSize = 33554432, // 32 Megabytes
     MaxEntityCount = 10000,
+    FPS = 60
 } GameConfig;
 
 typedef enum {
@@ -68,7 +70,7 @@ void GameInit(void);
 void PlayerInit(void);
 void LogMemoryUsed(void);
 void LoadAssets(void);
-void GetUserInput(void);
-void Update(void);
-void Render(void);
+void GameInput(void);
+void GameUpdate(void);
+void GameRender(void);
 void LoadLevel(const char* File);

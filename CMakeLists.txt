@@ -12,6 +12,7 @@ add_executable(Game
     src/System.c
     src/Entity.c
     src/Utils.c
+    src/LevelEditor.c
 )
 
 target_include_directories(Game PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -23,6 +24,9 @@ target_link_libraries(Game PRIVATE
 	raylib
 	winmm
 )
+
+# raygui
+target_include_directories(Game PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/raygui/include)
 
 target_compile_options(Game PRIVATE
 	-Wall
