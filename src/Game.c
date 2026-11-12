@@ -157,7 +157,7 @@ void GameRender(void)
 
 void LoadLevel(const char* File)
 {
-    FILE* Level = fopen(File, "r");
+    FILE* Level = fopen(File, "rb");
     Enforce(Level, "Failed to load level for the game");
 
     ArenaSnapshot(&CurrentGame.GameArena);
@@ -399,7 +399,7 @@ void PlayerInit(void)
     W->Components[PID] = CPlayer;
 
     W->Spatials[PID] = (Spatial) {
-        .Position = { 640.0f, 360.0f },
+        .Position = { GetRenderWidth() * 0.5f, GetRenderHeight() * 0.5f },
         .Scale = 1.0f
     };
 
@@ -411,7 +411,7 @@ void PlayerInit(void)
     W->Movements[PID] = (Movement) {
         .Magnitude = { 0.0f, 0.0f },
         .Direction = { 1.0f, 1.0f },
-        .PreviousPosition = { 640.0f, 360.0f }
+        .PreviousPosition = { GetRenderWidth() * 0.5f, GetRenderHeight() * 0.5f }
     };
 
     W->Gravities[PID] = (Gravity) {

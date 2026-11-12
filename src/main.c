@@ -8,11 +8,15 @@ int main(void)
 {
     SetConfigFlags(FLAG_VSYNC_HINT);
     SetTraceLogLevel(LOG_WARNING);
+
     InitWindow(WindowWidth, WindowHeight, "Game");
+    SetTargetFPS(FPS);
 
     GameInit();
     if (EditorMode) { LevelEditorInit(); }
+
     LoadLevel(LevelPath "level1.txt");
+    SetTraceLogLevel(LOG_INFO);
 
     while (!WindowShouldClose())
     {
@@ -29,6 +33,8 @@ int main(void)
         }
     }
 
+    SetTraceLogLevel(LOG_WARNING);
     CloseWindow();
+
     return 0;
 }

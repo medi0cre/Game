@@ -13,4 +13,6 @@ typedef struct {
 void LevelEditorInit(void);
 void LevelEditorUpdate(void);
 void LevelEditorRender(void);
+void UpdateAssetPicker(void);
+void RenderAssetPicker(void);
 void SaveLevel(const char* File);
